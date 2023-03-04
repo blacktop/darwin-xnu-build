@@ -50,3 +50,26 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# build files
+.DS_Store
+venv
+compile_commands.json
+build
+fakeroot
+# build repos
+AvailabilityVersions
+dtrace
+libdispatch
+libplatform
+Libsystem
+# patches
+bsd/sys/make_symbol_aliasing.sh
+libsyscall/Libsyscall.xcconfig
+makedefs/MakeInc.def
+osfmk/arm64/machine_routines.c
+# CodeQL
+xnu-codeql
+xnu-codeql.zip
+xnu-queries
+codeql_queries
