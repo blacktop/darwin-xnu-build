@@ -251,16 +251,16 @@ main() {
             rm -rf ${FAKEROOT_DIR}
         fi
     fi
-    # venv
-    # patches
-    # build_dtrace
-    # build_availabilityversions
-    # xnu_headers
-    # libsystem_headers
-    # libsyscall_headers
-    # build_libplatform
-    # build_libdispatch
-    # build_xnu
+    venv
+    patches
+    build_dtrace
+    build_availabilityversions
+    xnu_headers
+    libsystem_headers
+    libsyscall_headers
+    build_libplatform
+    build_libdispatch
+    build_xnu
     if [[ "${1-}" =~ ^-*k(c)?$ ]]; then    
         install_ipsw
         build_kc
