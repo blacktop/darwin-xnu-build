@@ -1,0 +1,32 @@
+name: XNU CodeQL
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Deps
+        run: |
+          brew update
+      - name: Build XNU JSON compilation database
+        run: |
+          JSONDB=1 bash build.sh
+      - name: Build XNU
+        run: |      
+          bash build.sh
+      - name: Build XNU CodeQL Database
+        run: |
+          bash codeql.sh
+      - uses: actions/upload-artifact@v3
+        with:
+          name: xnu-codeql
+          path: xnu-codeql.zip
