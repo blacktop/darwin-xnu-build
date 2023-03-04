@@ -2,7 +2,7 @@
 
 [![XNU CodeQL](https://github.com/blacktop/darwin-xnu-build/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/blacktop/darwin-xnu-build/actions/workflows/c-cpp.yml)
 
-> This repository contains the xnu src as well as scripts to build it as well as generate a KEXT collection and CodeQL database.
+> This repository contains the xnu src as well as scripts to build it as well as generate a KEXT collection and a CodeQL database.
 
 ---
 
