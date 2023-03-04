@@ -51,9 +51,9 @@ BUILD_DIR=${WORK_DIR}/build
 FAKEROOT_DIR=${WORK_DIR}/fakeroot
 DSTROOT=${FAKEROOT_DIR}
 
-RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-130/release.json'
+RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-131/release.json'
 
-KDKROOT='/Library/Developer/KDKs/KDK_13.0_22A380.kdk'
+KDKROOT='/Library/Developer/KDKs/KDK_13.1_22C65.kdk'
 KERNEL_FRAMEWORK_ROOT='/System/Library/Frameworks/Kernel.framework/Versions/A'
 
 venv() {
