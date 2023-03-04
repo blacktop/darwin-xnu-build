@@ -243,12 +243,24 @@ build_kc() {
 
 main() {
     if [[ "${1-}" =~ ^-*c(lean)?$ ]]; then
-        running "Cleaning ${BUILD_DIR} and ${FAKEROOT_DIR}"
+        running "Cleaning build directories and extra repos..."
         read -p "Are you sure? " -n 1 -r
         echo    # (optional) move to a new line
         if [[ $REPLY =~ ^[Yy]$ ]]; then
+            info "deleting ${BUILD_DIR}"
             rm -rf ${BUILD_DIR}
+            info "deleting ${FAKEROOT_DIR}"
             rm -rf ${FAKEROOT_DIR}
+            info "deleting ${WORK_DIR}/dtrace"
+            rm -rf ${WORK_DIR}/dtrace
+            info "deleting ${WORK_DIR}/AvailabilityVersions"
+            rm -rf ${WORK_DIR}/AvailabilityVersions
+            info "deleting ${WORK_DIR}/Libsystem"
+            rm -rf ${WORK_DIR}/Libsystem
+            info "deleting ${WORK_DIR}/libplatform"
+            rm -rf ${WORK_DIR}/libplatform
+            info "deleting ${WORK_DIR}/libdispatch"
+            rm -rf ${WORK_DIR}/libdispatch
         fi
     fi
     venv
