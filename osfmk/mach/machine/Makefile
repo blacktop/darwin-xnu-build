@@ -1,0 +1,37 @@
+export MakeInc_cmd=${SRCROOT}/makedefs/MakeInc.cmd
+export MakeInc_def=${SRCROOT}/makedefs/MakeInc.def
+export MakeInc_rule=${SRCROOT}/makedefs/MakeInc.rule
+export MakeInc_dir=${SRCROOT}/makedefs/MakeInc.dir
+
+include $(MakeInc_cmd)
+include $(MakeInc_def)
+
+DATAFILES = \
+	asm.h boolean.h exception.h kern_return.h ndr_def.h rpc.h \
+	processor_info.h thread_state.h thread_status.h \
+	vm_param.h vm_types.h machine_types.defs \
+	syscall_sw.h sdt.h sdt_isa.h _structs.h
+
+# mach_machine.modulemap additionally includes machine.h from ../.
+# mach_machine.modulemap additionally includes the headers from
+# ../{i386,arm} and ../../arm64.
+MODULEMAPFILES = \
+	mach_machine.modulemap
+
+PRIVATE_DATAFILES = \
+	syscall_sw.h
+
+INSTALL_MI_LIST = ${DATAFILES}
+
+INSTALL_MODULEMAP_MI_LIST = ${MODULEMAPFILES}
+
+INSTALL_SF_MI_LCL_LIST = ${DATAFILES} ${PRIVATE_DATAFILES}
+
+INSTALL_MI_DIR = mach/machine
+
+EXPORT_MI_LIST = ${DATAFILES}
+
+EXPORT_MI_DIR = mach/machine
+
+include $(MakeInc_rule)
+include $(MakeInc_dir)

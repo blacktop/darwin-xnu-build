@@ -1,0 +1,127 @@
+#
+# Common definitions for test directories
+#
+
+ifeq ($(RC_XBS),YES)
+_v =
+XCRUN := /usr/bin/xcrun -verbose
+else ifeq ($(VERBOSE),YES)
+_v =
+XCRUN := /usr/bin/xcrun -verbose
+else
+_v = @
+XCRUN := /usr/bin/xcrun
+endif
+
+SDKROOT ?= macosx
+
+# SDKROOT may be passed as a shorthand like "iphoneos.internal". We
+# must resolve these to a full path and override SDKROOT.
+ifeq ($(origin SDKROOT_RESOLVED),undefined)
+export SDKROOT_RESOLVED := $(shell $(XCRUN) -sdk $(SDKROOT) -show-sdk-path)
+ifeq ($(strip $(SDKROOT)_$(SDKROOT_RESOLVED)),/_)
+SDKROOT_RESOLVED := /
+endif
+endif
+override SDKROOT = $(SDKROOT_RESOLVED)
+TARGETSDK:=$(SDKROOT_RESOLVED)
+SDKROOTPATH:=$(SDKROOT_RESOLVED)
+
+ifeq ($(origin SDKVERSION),undefined)
+export SDKVERSION := $(shell $(XCRUN) -sdk $(SDKROOT) -show-sdk-version)
+endif
+
+export PLATFORMPATH := $(shell $(XCRUN) -sdk $(SDKROOT) -show-sdk-platform-path)
+export SDKPLATFORM := $(shell echo $(PLATFORMPATH) | sed 's,^.*/\([^/]*\)\.platform$$,\1,')
+
+ifeq ($(origin PLATFORM),undefined)
+export PLATFORM := $(SDKPLATFORM)
+
+ifeq ($(PLATFORM),watchOS)
+    export PLATFORM := WatchOS
+endif
+
+
+endif
+
+SUPPORTED_EMBEDDED_PLATFORMS := iPhoneOS iPhoneOSNano tvOS AppleTVOS WatchOS BridgeOS
+
+
+Embedded = $(if $(filter $(SUPPORTED_EMBEDDED_PLATFORMS),$(PLATFORM)),YES,NO)
+
+#
+# Deployment target flag
+#
+ifeq ($(PLATFORM),MacOSX)
+    DEPLOYMENT_TARGET_FLAGS = -mmacosx-version-min=$(SDKVERSION)
+else ifeq ($(PLATFORM),WatchOS)
+    DEPLOYMENT_TARGET_FLAGS = -mwatchos-version-min=$(SDKVERSION)
+else ifeq ($(PLATFORM),tvOS)
+    DEPLOYMENT_TARGET_FLAGS = -mtvos-version-min=$(SDKVERSION)
+else ifeq ($(PLATFORM),AppleTVOS)
+    DEPLOYMENT_TARGET_FLAGS = -mtvos-version-min=$(SDKVERSION)
+else ifeq ($(PLATFORM),BridgeOS)
+    DEPLOYMENT_TARGET_FLAGS = -mbridgeos-version-min=$(SDKVERSION)
+else ifneq ($(filter $(SUPPORTED_EMBEDDED_PLATFORMS),$(PLATFORM)),)
+    DEPLOYMENT_TARGET_FLAGS = -miphoneos-version-min=$(SDKVERSION)
+else ifneq ($(filter $(SUPPORTED_SIMULATOR_PLATFORMS),$(PLATFORM)),)
+    DEPLOYMENT_TARGET_FLAGS =
+else
+    DEPLOYMENT_TARGET_FLAGS =
+endif
+
+DEPLOYMENT_TARGET_DEFINES = -DXNU_PLATFORM_$(PLATFORM)
+
+#
+# Locate common utilities
+# These must all be exported into the environment and checked for already being
+# set to avoid calling xcrun repeatedly during a recursive make
+#
+ifeq ($(origin CC),default)
+	export CC := $(shell $(XCRUN) -sdk "$(TARGETSDK)" -find clang)
+endif
+ifeq ($(origin MIG),undefined)
+# Since mig comes from the XcodeDefault toolchain, it may complain about an
+# invalid version number if no SDKROOT environment variable is provided.
+	export MIG := SDKROOT=$(SDKROOT) $(shell $(XCRUN) -sdk "$(TARGETSDK)" -find mig)
+endif
+ifeq ($(origin CODESIGN),undefined)
+	export CODESIGN := $(shell $(XCRUN) -sdk "$(TARGETSDK)" -find codesign)
+endif
+ifeq ($(origin CODESIGN_ALLOCATE),undefined)
+	export CODESIGN_ALLOCATE := $(shell $(XCRUN) -sdk "$(TARGETSDK)" -find codesign_allocate)
+endif
+ifeq ($(origin PLUTIL),undefined)
+	export PLUTIL := $(shell $(XCRUN) -sdk "$(TARGETSDK)" -find plutil)
+endif
+ifeq ($(origin STRIP),undefined)
+	export STRIP := $(shell $(XCRUN) -sdk "$(TARGETSDK)" -find strip)
+endif
+ifeq ($(origin DSYMUTIL),undefined)
+	export DSYMUTIL := $(shell $(XCRUN) -sdk "$(TARGETSDK)" -find dsymutil)
+endif
+
+# These are convenience functions for filtering based on substrings, as the
+# normal filter functions only accept one wildcard.
+FILTER_OUT_SUBSTRING=$(strip $(foreach string,$(2),$(if $(findstring $(1),$(string)),,$(string))))
+FILTER_SUBSTRING=$(strip $(foreach string,$(2),$(if $(findstring $(1),$(string)),$(string),)))
+
+#arch configs if not provided
+ifdef RC_ARCHS
+ARCH_CONFIGS:=$(RC_ARCHS)
+endif
+
+ifeq ($(ARCH_CONFIGS),)
+PLATFORM_LOWERCASE:=$(shell echo "$(SDKPLATFORM)" | tr A-Z a-z)
+ARCH_CONFIGS:=$(shell /usr/bin/plutil -extract SupportedTargets.$(PLATFORM_LOWERCASE).Archs json -o - $(SDKROOT)/SDKSettings.plist | tr '",[]' ' ')
+PLATFORM_LOWERCASE:=
+endif
+
+ARCH_CONFIGS:=$(call FILTER_OUT_SUBSTRING,armv7,$(ARCH_CONFIGS))
+
+ARCH_CONFIGS_64:=$(call FILTER_SUBSTRING,64,$(ARCH_CONFIGS))
+ARCH_CONFIGS_x86:=$(call FILTER_SUBSTRING,x86_64,$(ARCH_CONFIGS))
+
+ARCH_FLAGS:=$(foreach argarch,$(ARCH_CONFIGS), -arch $(argarch) )
+ARCH_FLAGS_64:=$(foreach argarch,$(ARCH_CONFIGS_64), -arch $(argarch) )
+ARCH_FLAGS_x86:=$(foreach argarch,$(ARCH_CONFIGS_x86), -arch $(argarch) )
