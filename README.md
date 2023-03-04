@@ -13,7 +13,7 @@
 - [ipsw](https://github.com/blacktop/ipsw)
 - [codeql CLI](https://codeql.github.com/docs/codeql-cli/)
 
-## Support OS Versions
+## Supported OS Versions
 
 - macOS 13.0
 - macOS 13.1
