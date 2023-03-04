@@ -227,7 +227,7 @@ install_ipsw() {
 build_kc() {
     if [ -f "${BUILD_DIR}/xnu.obj/kernel.${KERNEL_CONFIG,,}.${MACHINE_CONFIG,,}" ]; then
         running "📦 Building kext collection for kernel.${KERNEL_CONFIG,,}.${MACHINE_CONFIG,,}"
-        kmutil create -M -v -V release -a arm64e -n boot \
+        kmutil create -v -V release -a arm64e -n boot \
             -B ${BUILD_DIR}/oss-xnu.kc \
             -k ${BUILD_DIR}/xnu.obj/kernel.${KERNEL_CONFIG,,}.${MACHINE_CONFIG,,} \
             --kdk ${KDKROOT} \
