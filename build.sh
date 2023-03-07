@@ -316,6 +316,8 @@ main() {
             rm -rf ${BUILD_DIR}
             info "deleting ${FAKEROOT_DIR}"
             rm -rf ${FAKEROOT_DIR}
+            info "deleting ${WORK_DIR}/xnu"
+            rm -rf ${WORK_DIR}/xnu
             info "deleting ${WORK_DIR}/dtrace"
             rm -rf ${WORK_DIR}/dtrace
             info "deleting ${WORK_DIR}/AvailabilityVersions"
@@ -332,19 +334,19 @@ main() {
     choose_xnu
     get_xnu
     patches
-    # venv
-    # build_dtrace
-    # build_availabilityversions
-    # xnu_headers
-    # libsystem_headers
-    # libsyscall_headers
-    # build_libplatform
-    # build_libdispatch
-    # build_xnu
-    # if [[ "${1-}" =~ ^-*k(c)?$ ]]; then
-    #     install_ipsw
-    #     build_kc
-    # fi
+    venv
+    build_dtrace
+    build_availabilityversions
+    xnu_headers
+    libsystem_headers
+    libsyscall_headers
+    build_libplatform
+    build_libdispatch
+    build_xnu
+    if [[ "${1-}" =~ ^-*k(c)?$ ]]; then
+        install_ipsw
+        build_kc
+    fi
     echo "  🎉 XNU Build Done!"
 }
 
