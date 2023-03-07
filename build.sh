@@ -109,7 +109,7 @@ choose_xnu() {
         running "Downloading '$KDK_NAME' to /tmp"
         curl --progress-bar -L -o /tmp/KDK.dmg ${KDK_URL}
         info "Installing KDK"
-        hdiutil attach dmg /tmp/KDK.dmg
+        hdiutil attach /tmp/KDK.dmg
         installer -pkg '/Volumes/Kernel Debug Kit/' -target /
         hdiutil detach '/Volumes/Kernel Debug Kit/'
     fi
