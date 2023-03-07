@@ -109,7 +109,7 @@ choose_xnu() {
         running "Downloading $KDK_NAME to /tmp"
         (cd /tmp && curl -L -O "$KDK_URL")
         info "Please install KDK manually and retry the script after installation"
-        open /tmp/KDK*.dmg
+        open /tmp/Kernel_Debug_Kit_*.dmg
     fi
 }
 
