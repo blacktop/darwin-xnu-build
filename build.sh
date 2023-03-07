@@ -108,7 +108,7 @@ choose_xnu() {
         KDK_URL=$(curl -s "https://raw.githubusercontent.com/dortania/KdkSupportPkg/gh-pages/manifest.json" | jq -r --arg KDK_NAME "$KDK_NAME" '.[] | select(.name==$KDK_NAME) | .url')
         running "Downloading '$KDK_NAME' to /tmp"
         curl --progress-bar -L -o /tmp/KDK.dmg ${KDK_URL}
-        info "Installing KDK"
+        running "Installing KDK"
         hdiutil attach /tmp/KDK.dmg
         sudo installer -pkg '/Volumes/Kernel Debug Kit/KernelDebugKit.pkg' -target /
         hdiutil detach '/Volumes/Kernel Debug Kit'
