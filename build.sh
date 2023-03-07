@@ -13,7 +13,7 @@ fi
 if [[ "${1-}" =~ ^-*h(elp)?$ ]]; then
     echo 'Usage: build.sh [-h] [--clean]
 
-This script builds the macOS 13.0 XNU kernel
+This script builds the macOS XNU kernel
 
 Where:
     -h       show this help text
@@ -41,6 +41,10 @@ function info() {
     echo -e "$COL_BLUE[info]$COL_RESET" $1
 }
 
+function error() {
+    echo -e "$COL_RED[error] $COL_RESET"$1
+}
+
 : ${KERNEL_CONFIG:=RELEASE}
 : ${ARCH_CONFIG:=ARM64}
 : ${MACHINE_CONFIG:=VMAPPLE}
@@ -51,10 +55,62 @@ BUILD_DIR=${WORK_DIR}/build
 FAKEROOT_DIR=${WORK_DIR}/fakeroot
 DSTROOT=${FAKEROOT_DIR}
 
-RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-132/release.json'
-
-KDKROOT='/Library/Developer/KDKs/KDK_13.2_22D49.kdk'
 KERNEL_FRAMEWORK_ROOT='/System/Library/Frameworks/Kernel.framework/Versions/A'
+
+: ${RELEASE_URL:='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-132/release.json'}
+: ${KDKROOT:='/Library/Developer/KDKs/KDK_13.2_22D49.kdk'}
+
+
+install_deps() {
+    if [ ! -x "$(command -v jq)" ] || [ ! -x "$(command -v gum)" ] || [ ! -x "$(command -v xcodes)" ]; then
+        running "Installing dependencies"
+        if [ ! -x "$(command -v brew)" ]; then
+            error "Please install homebrew - https://brew.sh (or install 'jq' and 'gum' manually)"
+        fi
+        brew install jq gum xcodes
+    fi
+    if [ ! -d "/Applications/Xcode.app" ] || [ ! -d "/Applications/Xcode-beta.app" ]; then
+        running "Installing XCode"
+        gum style --border normal --margin "1" --padding "1 2" --border-foreground 212 "Choose $(gum style --foreground 212 'XCode') to install:"
+        XCODE_VERSION=$(gum choose "13.4.1" "14.0.1" "14.1" "14.2" "14.3-beta")
+        curl -o /tmp/Xcode_${XCODE_VERSION}.xip "https://storage.googleapis.com/xcodes-cache/Xcode_${XCODE_VERSION}.xip"
+        xcodes install ${XCODE_VERSION} --experimental-unxip --path /tmp/Xcode_${XCODE_VERSION}.xip
+        xcodebuild -downloadAllPlatforms
+        xcodebuild -runFirstLaunch
+    fi
+}
+
+choose_xnu() {
+    gum style --border normal --margin "1" --padding "1 2" --border-foreground 212 "Choose $(gum style --foreground 212 'xnu') version to install:"
+    XNU_VERSION=$(gum choose "macOS 13.0" "macOS 13.1" "macOS 13.2")
+    case ${XNU_VERSION} in
+    'macOS 13.0')
+        RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-130/release.json'
+        KDK_NAME='Kernel Debug Kit 13.0 build 22A380'
+        KDKROOT='/Library/Developer/KDKs/KDK_13.0_22A380.kdk'
+        ;;
+    'macOS 13.1')
+        RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-131/release.json'
+        KDK_NAME='Kernel Debug Kit 13.1 build 22C65'
+        KDKROOT='/Library/Developer/KDKs/KDK_13.1_22C65.kdk'
+        ;;
+    'macOS 13.2')
+        RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-132/release.json'
+        KDK_NAME='Kernel Debug Kit 13.2 build 22D49'
+        KDKROOT='/Library/Developer/KDKs/KDK_13.2_22D49.kdk'
+        ;;
+    *)
+        error "Invalid xnu version"
+        exit 1
+        ;;
+    esac
+    if [ ! -d "$KDKROOT" ]; then
+        KDK_URL=$(curl "https://raw.githubusercontent.com/dortania/KdkSupportPkg/gh-pages/manifest.json" | jq -r '.[] | select(.name == "$KDK_NAME") | .url')
+        running "Downloading $KDK_NAME to /tmp"
+        (cd /tmp && curl -O "$KDK_URL")
+        info "Please install KDK manually and retry the script after installation"
+    fi
+}
 
 venv() {
     if [ ! -d "${WORK_DIR}/venv" ]; then
@@ -65,16 +121,24 @@ venv() {
     source ${WORK_DIR}/venv/bin/activate
 }
 
+get_xnu() {
+    if [ ! -d "${WORK_DIR}/xnu" ]; then
+        running "⬇️ Cloning xnu"
+        XNU_VERSION=$(curl -s $RELEASE_URL | jq -r '.projects[] | select(.project=="xnu") | .tag')
+        git clone --branch ${XNU_VERSION} https://github.com/apple-oss-distributions/xnu.git ${WORK_DIR}/xnu
+    fi
+}
+
 patches() {
     running "Patching xnu files"
     # xnu headers patch
-    sed -i '' 's|^AVAILABILITY_PL="${SDKROOT}/${DRIVERKITROOT}|AVAILABILITY_PL="${FAKEROOT_DIR}|g' ${WORK_DIR}/bsd/sys/make_symbol_aliasing.sh
+    sed -i '' 's|^AVAILABILITY_PL="${SDKROOT}/${DRIVERKITROOT}|AVAILABILITY_PL="${FAKEROOT_DIR}|g' ${WORK_DIR}/xnu/bsd/sys/make_symbol_aliasing.sh
     # libsyscall patch
-    sed -i '' 's|^#include.*BSD.xcconfig.*||g' ${WORK_DIR}/libsyscall/Libsyscall.xcconfig
+    sed -i '' 's|^#include.*BSD.xcconfig.*||g' ${WORK_DIR}/xnu/libsyscall/Libsyscall.xcconfig
     # xnu build patch
-    sed -i '' 's|^LDFLAGS_KERNEL_SDK	= -L$(SDKROOT).*|LDFLAGS_KERNEL_SDK	= -L$(FAKEROOT_DIR)/usr/local/lib/kernel -lfirehose_kernel|g' ${WORK_DIR}/makedefs/MakeInc.def
-    sed -i '' 's|^INCFLAGS_SDK	= -I$(SDKROOT)|INCFLAGS_SDK	= -I$(FAKEROOT_DIR)|g' ${WORK_DIR}/makedefs/MakeInc.def
-    git apply .github/patches/machine_routines.patch || true
+    sed -i '' 's|^LDFLAGS_KERNEL_SDK	= -L$(SDKROOT).*|LDFLAGS_KERNEL_SDK	= -L$(FAKEROOT_DIR)/usr/local/lib/kernel -lfirehose_kernel|g' ${WORK_DIR}/xnu/makedefs/MakeInc.def
+    sed -i '' 's|^INCFLAGS_SDK	= -I$(SDKROOT)|INCFLAGS_SDK	= -I$(FAKEROOT_DIR)|g' ${WORK_DIR}/xnu/makedefs/MakeInc.def
+    git apply --directory='xnu' patches/machine_routines.patch || true
 }
 
 build_dtrace() {
@@ -191,7 +255,7 @@ build_xnu() {
         if [ ! -d "${KDKROOT}" ]; then
             error "KDKROOT not found: ${KDKROOT} - please install from the Developer Portal"
             exit 1
-        fi        
+        fi
         SRCROOT=${WORK_DIR}
         OBJROOT=${BUILD_DIR}/xnu-compiledb.obj
         SYMROOT=${BUILD_DIR}/xnu-compiledb.sym
@@ -263,20 +327,23 @@ main() {
             rm -rf ${WORK_DIR}/libdispatch
         fi
     fi
-    venv
+    install_deps
+    choose_xnu
+    get_xnu
     patches
-    build_dtrace
-    build_availabilityversions
-    xnu_headers
-    libsystem_headers
-    libsyscall_headers
-    build_libplatform
-    build_libdispatch
-    build_xnu
-    if [[ "${1-}" =~ ^-*k(c)?$ ]]; then    
-        install_ipsw
-        build_kc
-    fi
+    # venv
+    # build_dtrace
+    # build_availabilityversions
+    # xnu_headers
+    # libsystem_headers
+    # libsyscall_headers
+    # build_libplatform
+    # build_libdispatch
+    # build_xnu
+    # if [[ "${1-}" =~ ^-*k(c)?$ ]]; then
+    #     install_ipsw
+    #     build_kc
+    # fi
     echo "  🎉 XNU Build Done!"
 }
 

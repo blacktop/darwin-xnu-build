@@ -42,15 +42,6 @@
 *.idb
 *.pdb
 
-# Kernel Module Compile Results
-*.mod*
-*.cmd
-.tmp_versions/
-modules.order
-Module.symvers
-Mkfile.old
-dkms.conf
-
 # build files
 .DS_Store
 venv
@@ -58,6 +49,7 @@ compile_commands.json
 build
 fakeroot
 # build repos
+xnu
 AvailabilityVersions
 dtrace
 libdispatch
