@@ -9,20 +9,6 @@ if [[ "${TRACE-0}" == "1" ]]; then
     set -o xtrace
 fi
 
-# Help
-if [[ "${1-}" =~ ^-*h(elp)?$ ]]; then
-    echo 'Usage: build.sh [-h] [--clean]
-
-This script builds the macOS XNU kernel
-
-Where:
-    -h       show this help text
-    --kc     Create Kext Collection (via kmutil create)
-    --clean  cleans build and fakeroot directories
-'
-    exit
-fi
-
 # Colors
 export ESC_SEQ="\x1b["
 export COL_RESET=$ESC_SEQ"39;49;00m"
@@ -51,6 +37,7 @@ function error() {
 : ${MACHINE_CONFIG:=VMAPPLE}
 : ${XNU_VERSION:=''}
 : ${JSONDB:=0}
+: ${BUILDKC:=0}
 
 WORK_DIR="$PWD"
 BUILD_DIR=${WORK_DIR}/build
@@ -62,6 +49,42 @@ KERNEL_FRAMEWORK_ROOT='/System/Library/Frameworks/Kernel.framework/Versions/A'
 : ${RELEASE_URL:='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-132/release.json'}
 : ${KDKROOT:='/Library/Developer/KDKs/KDK_13.2_22D49.kdk'}
 
+help() {
+    echo 'Usage: build.sh [-h] [--clean] [--kc]
+
+This script builds the macOS XNU kernel
+
+Where:
+    -h|--help       show this help text
+    -c|--clean      cleans build artifacts and cloned repos
+    -k|--kc         create Kext Collection (via kmutil create)
+'
+    exit
+}
+
+clean() {
+    running "Cleaning build directories and extra repos..."
+    read -p "Are you sure? " -n 1 -r
+    echo    # (optional) move to a new line
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        info "deleting ${BUILD_DIR}"
+        rm -rf ${BUILD_DIR}
+        info "deleting ${FAKEROOT_DIR}"
+        rm -rf ${FAKEROOT_DIR}
+        info "deleting ${WORK_DIR}/xnu"
+        rm -rf ${WORK_DIR}/xnu
+        info "deleting ${WORK_DIR}/dtrace"
+        rm -rf ${WORK_DIR}/dtrace
+        info "deleting ${WORK_DIR}/AvailabilityVersions"
+        rm -rf ${WORK_DIR}/AvailabilityVersions
+        info "deleting ${WORK_DIR}/Libsystem"
+        rm -rf ${WORK_DIR}/Libsystem
+        info "deleting ${WORK_DIR}/libplatform"
+        rm -rf ${WORK_DIR}/libplatform
+        info "deleting ${WORK_DIR}/libdispatch"
+        rm -rf ${WORK_DIR}/libdispatch
+    fi
+}
 
 install_deps() {
     if [ ! -x "$(command -v jq)" ] || [ ! -x "$(command -v gum)" ] || [ ! -x "$(command -v xcodes)" ]; then
@@ -313,29 +336,25 @@ build_kc() {
 }
 
 main() {
-    if [[ "${1-}" =~ ^-*c(lean)?$ ]]; then
-        running "Cleaning build directories and extra repos..."
-        read -p "Are you sure? " -n 1 -r
-        echo    # (optional) move to a new line
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            info "deleting ${BUILD_DIR}"
-            rm -rf ${BUILD_DIR}
-            info "deleting ${FAKEROOT_DIR}"
-            rm -rf ${FAKEROOT_DIR}
-            info "deleting ${WORK_DIR}/xnu"
-            rm -rf ${WORK_DIR}/xnu
-            info "deleting ${WORK_DIR}/dtrace"
-            rm -rf ${WORK_DIR}/dtrace
-            info "deleting ${WORK_DIR}/AvailabilityVersions"
-            rm -rf ${WORK_DIR}/AvailabilityVersions
-            info "deleting ${WORK_DIR}/Libsystem"
-            rm -rf ${WORK_DIR}/Libsystem
-            info "deleting ${WORK_DIR}/libplatform"
-            rm -rf ${WORK_DIR}/libplatform
-            info "deleting ${WORK_DIR}/libdispatch"
-            rm -rf ${WORK_DIR}/libdispatch
-        fi
-    fi
+    while test $# -gt 0; do
+        case "$1" in
+            -h|--help)
+                help
+                ;;
+            -c|--clean)
+                clean
+                shift
+                ;;
+            -k|--kc)
+                export BUILDKC=1
+                info "Building kext collection ${BUILDKC}"
+                shift
+                ;;
+            *)
+            break
+            ;;
+        esac
+    done
     install_deps
     choose_xnu
     get_xnu
@@ -349,7 +368,7 @@ main() {
     build_libplatform
     build_libdispatch
     build_xnu
-    if [[ "${1-}" =~ ^-*k(c)?$ ]]; then
+    if [ "$BUILDKC" -ne "0" ]; then
         install_ipsw
         build_kc
     fi

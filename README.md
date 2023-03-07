@@ -34,12 +34,6 @@ git clone https://github.com/blacktop/darwin-xnu-build.git
 cd darwin-xnu-build
 ```
 
-Checkout the tag you want to build
-
-```bash
-git checkout tags/xnu-8792.81.2 -b macOS_13_2
-```
-
 Build the kernel and KEXT collection
 
 ```bash
@@ -119,8 +113,8 @@ Zips up the CodeQL database
 
 ## TODO
 
-- [ ] Auto build xnu with Github Actions
-- [ ] Auto generate CodeQL database with Github Actions
+- [x] Auto build xnu with Github Actions
+- [x] Auto generate CodeQL database with Github Actions
 
 ## Credit
 
