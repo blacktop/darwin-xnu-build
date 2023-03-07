@@ -108,8 +108,10 @@ choose_xnu() {
         KDK_URL=$(curl -s "https://raw.githubusercontent.com/dortania/KdkSupportPkg/gh-pages/manifest.json" | jq -r --arg KDK_NAME "$KDK_NAME" '.[] | select(.name==$KDK_NAME) | .url')
         running "Downloading '$KDK_NAME' to /tmp"
         curl --progress-bar -L -o /tmp/KDK.dmg ${KDK_URL}
-        info "Please install KDK manually and retry the script after installation"
-        open /tmp/KDK.dmg
+        info "Installing KDK"
+        hdiutil attach dmg /tmp/KDK.dmg
+        installer -pkg '/Volumes/Kernel Debug Kit/' -target /
+        hdiutil detach '/Volumes/Kernel Debug Kit/'
     fi
 }
 
