@@ -17,6 +17,7 @@ jobs:
       - name: Deps
         run: |
           brew update
+          brew install bash
       # - name: Build XNU JSON compilation database
       #   run: |
       #     XNU_VERSION='macOS 13.2' JSONDB=1 bash build.sh

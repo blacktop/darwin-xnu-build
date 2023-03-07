@@ -106,7 +106,7 @@ install_deps() {
 }
 
 install_ipsw() {
-    if ! [ -x "$(command -v ipsw)" ]; then
+    if [ ! -x "$(command -v ipsw)" ]; then
         running "Installing `ipsw`..."
         brew install blacktop/tap/ipsw
     fi
@@ -320,10 +320,10 @@ build_xnu() {
 
 build_kc() {
     if [ -f "${BUILD_DIR}/xnu.obj/kernel.${KERNEL_CONFIG,,}.${MACHINE_CONFIG,,}" ]; then
-        running "📦 Building kext collection for kernel.${KERNEL_CONFIG,,}.${MACHINE_CONFIG,,}"
+        running "📦 Building kext collection for kernel.$(echo $KERNEL_CONFIG | tr '[:upper:]' '[:lower:]').$(echo $MACHINE_CONFIG | tr '[:upper:]' '[:lower:]')"
         kmutil create -v -V release -a arm64e -n boot \
             -B ${BUILD_DIR}/oss-xnu.kc \
-            -k ${BUILD_DIR}/xnu.obj/kernel.${KERNEL_CONFIG,,}.${MACHINE_CONFIG,,} \
+            -k ${BUILD_DIR}/xnu.obj/kernel.$(echo $KERNEL_CONFIG | tr '[:upper:]' '[:lower:]').$(echo $MACHINE_CONFIG | tr '[:upper:]' '[:lower:]') \
             --kdk ${KDKROOT} \
             --elide-identifier com.apple.driver.SEPHibernation \
             --elide-identifier com.apple.iokit.IOSkywalkFamily \
