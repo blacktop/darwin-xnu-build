@@ -84,7 +84,7 @@ Flags         = None
 Clean rebuild the kernel and KEXT collection
 
 ```bash
-KERNEL_CONFIG=RELEASE ARCH_CONFIG=ARM64 MACHINE_CONFIG=T6000 ./build.sh --clean
+KERNEL_CONFIG=RELEASE ARCH_CONFIG=ARM64 MACHINE_CONFIG=T6000 ./build.sh --clean --kc
 ```
 
 Generate a CodeQL database

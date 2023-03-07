@@ -105,6 +105,13 @@ install_deps() {
     fi
 }
 
+install_ipsw() {
+    if ! [ -x "$(command -v ipsw)" ]; then
+        running "Installing `ipsw`..."
+        brew install blacktop/tap/ipsw
+    fi
+}
+
 choose_xnu() {
     if [ -z "$XNU_VERSION"]; then
         gum style --border normal --margin "1" --padding "1 2" --border-foreground 212 "Choose $(gum style --foreground 212 'xnu') version to install:"
@@ -311,13 +318,6 @@ build_xnu() {
     fi
 }
 
-install_ipsw() {
-    if ! [ -x "$(command -v ipsw)" ]; then
-        running "Installing `ipsw`..."
-        brew install blacktop/tap/ipsw
-    fi
-}
-
 build_kc() {
     if [ -f "${BUILD_DIR}/xnu.obj/kernel.${KERNEL_CONFIG,,}.${MACHINE_CONFIG,,}" ]; then
         running "📦 Building kext collection for kernel.${KERNEL_CONFIG,,}.${MACHINE_CONFIG,,}"
@@ -336,6 +336,7 @@ build_kc() {
 }
 
 main() {
+    # Parse arguments
     while test $# -gt 0; do
         case "$1" in
             -h|--help)
@@ -347,7 +348,6 @@ main() {
                 ;;
             -k|--kc)
                 export BUILDKC=1
-                info "Building kext collection ${BUILDKC}"
                 shift
                 ;;
             *)
