@@ -177,7 +177,7 @@ build_availabilityversions() {
 xnu_headers() {
     if [ ! -d "${FAKEROOT_DIR}/${KERNEL_FRAMEWORK_ROOT}/PrivateHeaders" ]; then
         running "Installing xnu headers TARGET_CONFIGS=\"$KERNEL_CONFIG $ARCH_CONFIG $MACHINE_CONFIG\""
-        SRCROOT=${WORK_DIR}
+        SRCROOT=${WORK_DIR}/xnu
         OBJROOT=${BUILD_DIR}/xnu-hdrs.obj
         SYMROOT=${BUILD_DIR}/xnu-hdrs.sym
         cd ${SRCROOT}
@@ -206,7 +206,7 @@ libsystem_headers() {
 libsyscall_headers() {
     if [ ! -f "${FAKEROOT_DIR}/usr/include/os/proc.h" ]; then
         running "Installing libsyscall headers"
-        SRCROOT=${WORK_DIR}/libsyscall
+        SRCROOT=${WORK_DIR}/xnu/libsyscall
         OBJROOT=${BUILD_DIR}/libsyscall.obj
         SYMROOT=${BUILD_DIR}/libsyscall.sym
         cd ${SRCROOT}
@@ -257,7 +257,7 @@ build_xnu() {
             error "KDKROOT not found: ${KDKROOT} - please install from the Developer Portal"
             exit 1
         fi
-        SRCROOT=${WORK_DIR}
+        SRCROOT=${WORK_DIR}/xnu
         OBJROOT=${BUILD_DIR}/xnu-compiledb.obj
         SYMROOT=${BUILD_DIR}/xnu-compiledb.sym
         rm -rf ${OBJROOT}
@@ -273,7 +273,7 @@ build_xnu() {
             error "KDKROOT not found: ${KDKROOT} - please install from the Developer Portal"
             exit 1
         fi
-        SRCROOT=${WORK_DIR}
+        SRCROOT=${WORK_DIR}/xnu
         OBJROOT=${BUILD_DIR}/xnu.obj
         SYMROOT=${BUILD_DIR}/xnu.sym
         cd ${SRCROOT}
