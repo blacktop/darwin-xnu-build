@@ -69,7 +69,7 @@ install_deps() {
         fi
         brew install jq gum xcodes
     fi
-    if [ ! -d "/Applications/Xcode.app" ] || [ ! -d "/Applications/Xcode-beta.app" ]; then
+    if [ ! -d "/Applications/Xcode.app" ] && [ ! -d "/Applications/Xcode-beta.app" ]; then
         running "Installing XCode"
         gum style --border normal --margin "1" --padding "1 2" --border-foreground 212 "Choose $(gum style --foreground 212 'XCode') to install:"
         XCODE_VERSION=$(gum choose "13.4.1" "14.0.1" "14.1" "14.2" "14.3-beta")
