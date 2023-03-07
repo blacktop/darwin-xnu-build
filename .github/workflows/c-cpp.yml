@@ -19,13 +19,19 @@ jobs:
           brew update
       # - name: Build XNU JSON compilation database
       #   run: |
-      #     XNU_VERSION='macOS 13.1' JSONDB=1 bash build.sh
+      #     XNU_VERSION='macOS 13.2' JSONDB=1 bash build.sh
       - name: Build XNU
         run: |      
-          XNU_VERSION='macOS 13.1' bash build.sh
+          XNU_VERSION='macOS 13.2' bash build.sh
+      - uses: actions/upload-artifact@v3
+        with:
+          name: xnu-build
+          path: |
+            build/xnu.obj/kernel.release.vmapple
+            build/oss-xnu.kc
       - name: Build XNU CodeQL Database
         run: |
-          bash codeql.sh
+          XNU_VERSION='macOS 13.2' bash codeql.sh
       - uses: actions/upload-artifact@v3
         with:
           name: xnu-codeql

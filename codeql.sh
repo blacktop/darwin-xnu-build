@@ -40,6 +40,7 @@ function info() {
 : ${KERNEL_CONFIG:=RELEASE}
 : ${ARCH_CONFIG:=ARM64}
 : ${MACHINE_CONFIG:=VMAPPLE}
+: ${XNU_VERSION:=''}
 
 function install_codeql() {
     if ! [ -x "$(command -v codeql)" ]; then
@@ -57,7 +58,7 @@ function create_db() {
     rm -rf ${FAKEROOT_DIR}
     rm -rf ${DATABASE_DIR}
     running "📦 Creating the CodeQL database..."
-    KERNEL_CONFIG=${KERNEL_CONFIG} ARCH_CONFIG=${ARCH_CONFIG} MACHINE_CONFIG=${MACHINE_CONFIG} codeql database create ${DATABASE_DIR} --language=cpp -v --command=${WORK_DIR}/build.sh --source-root=${WORK_DIR}
+    XNU_VERSION=${XNU_VERSION} KERNEL_CONFIG=${KERNEL_CONFIG} ARCH_CONFIG=${ARCH_CONFIG} MACHINE_CONFIG=${MACHINE_CONFIG} codeql database create ${DATABASE_DIR} --language=cpp -v --command=${WORK_DIR}/build.sh --source-root=${WORK_DIR}
     info "Deleting log files..."
     rm -rf ${DATABASE_DIR}/log
     info "Zipping the CodeQL database..."
