@@ -105,7 +105,7 @@ choose_xnu() {
         ;;
     esac
     if [ ! -d "$KDKROOT" ]; then
-        KDK_URL=$(curl -s "https://raw.githubusercontent.com/dortania/KdkSupportPkg/gh-pages/manifest.json" | jq -r '.[] | select(.name == "$KDK_NAME") | .url')
+        KDK_URL=$(curl -s "https://raw.githubusercontent.com/dortania/KdkSupportPkg/gh-pages/manifest.json" | jq -r --arg KDK_NAME "$KDK_NAME" '.[] | select(.name==$KDK_NAME) | .url')
         running "Downloading '$KDK_NAME' to /tmp"
         curl -L -o /tmp/KDK.dmg ${KDK_URL}
         info "Please install KDK manually and retry the script after installation"
