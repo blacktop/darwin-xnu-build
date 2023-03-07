@@ -67,7 +67,7 @@ install_deps() {
         if [ ! -x "$(command -v brew)" ]; then
             error "Please install homebrew - https://brew.sh (or install 'jq' and 'gum' manually)"
         fi
-        brew install jq gum xcodes
+        brew install jq gum xcodes bash
     fi
     if [ ! -d "/Applications/Xcode.app" ] && [ ! -d "/Applications/Xcode-beta.app" ]; then
         running "Installing XCode"
