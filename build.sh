@@ -133,7 +133,7 @@ get_xnu() {
 }
 
 patches() {
-    running "Patching xnu files"
+    running "🩹 Patching xnu files"
     # xnu headers patch
     sed -i '' 's|^AVAILABILITY_PL="${SDKROOT}/${DRIVERKITROOT}|AVAILABILITY_PL="${FAKEROOT_DIR}|g' ${WORK_DIR}/xnu/bsd/sys/make_symbol_aliasing.sh
     # libsyscall patch
