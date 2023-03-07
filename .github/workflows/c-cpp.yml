@@ -23,6 +23,7 @@ jobs:
       #     XNU_VERSION='macOS 13.2' JSONDB=1 bash build.sh
       - name: Build XNU
         run: |      
+          kmutil create --help
           XNU_VERSION='macOS 13.2' bash build.sh --kc
       - uses: actions/upload-artifact@v3
         with:

@@ -324,13 +324,13 @@ build_kc() {
         kmutil create -v -V release -a arm64e -n boot \
             -B ${BUILD_DIR}/oss-xnu.kc \
             -k ${BUILD_DIR}/xnu.obj/kernel.$(echo $KERNEL_CONFIG | tr '[:upper:]' '[:lower:]').$(echo $MACHINE_CONFIG | tr '[:upper:]' '[:lower:]') \
-            --kdk ${KDKROOT} \
             --elide-identifier com.apple.driver.SEPHibernation \
             --elide-identifier com.apple.iokit.IOSkywalkFamily \
             -r ${KDKROOT}/System/Library/Extensions \
             -r /System/Library/Extensions \
             -r /System/Library/DriverExtensions \
             -x $(ipsw kernel kmutil inspect -x --filter 'com.apple.iokit.IOSkywalkFamily|com.apple.driver.SEPHibernation') # this will skip IOSkywalkFamily and SEPHibernation (and other kexts with them as dependencies)
+            # --kdk ${KDKROOT} \
             # -x $(kmutil inspect -V release --no-header | grep apple | grep -v "SEPHiber\|IOSkywalkFamily" | awk '{print " -b "$1; }')
     fi
 }
