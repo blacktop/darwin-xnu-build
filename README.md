@@ -9,7 +9,9 @@
 ## Dependencies
 
 - macOS host
+- XCode
 - python3
+- jq
 - [ipsw](https://github.com/blacktop/ipsw)
 - [codeql CLI](https://codeql.github.com/docs/codeql-cli/)
 
