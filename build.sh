@@ -45,9 +45,11 @@ function error() {
     echo -e "$COL_RED[error] $COL_RESET"$1
 }
 
+# Config
 : ${KERNEL_CONFIG:=RELEASE}
 : ${ARCH_CONFIG:=ARM64}
 : ${MACHINE_CONFIG:=VMAPPLE}
+: ${XNU_VERSION:=''}
 : ${JSONDB:=0}
 
 WORK_DIR="$PWD"
@@ -81,8 +83,10 @@ install_deps() {
 }
 
 choose_xnu() {
-    gum style --border normal --margin "1" --padding "1 2" --border-foreground 212 "Choose $(gum style --foreground 212 'xnu') version to install:"
-    XNU_VERSION=$(gum choose "macOS 13.0" "macOS 13.1" "macOS 13.2")
+    if [ -z "$XNU_VERSION"]; then
+        gum style --border normal --margin "1" --padding "1 2" --border-foreground 212 "Choose $(gum style --foreground 212 'xnu') version to install:"
+        XNU_VERSION=$(gum choose "macOS 13.0" "macOS 13.1" "macOS 13.2")
+    fi
     case ${XNU_VERSION} in
     'macOS 13.0')
         RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-130/release.json'

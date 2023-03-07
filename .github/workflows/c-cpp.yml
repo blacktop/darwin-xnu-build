@@ -17,12 +17,12 @@ jobs:
       - name: Deps
         run: |
           brew update
-      - name: Build XNU JSON compilation database
-        run: |
-          JSONDB=1 bash build.sh
+      # - name: Build XNU JSON compilation database
+      #   run: |
+      #     XNU_VERSION='macOS 13.1' JSONDB=1 bash build.sh
       - name: Build XNU
         run: |      
-          bash build.sh
+          XNU_VERSION='macOS 13.1' bash build.sh
       - name: Build XNU CodeQL Database
         run: |
           bash codeql.sh
