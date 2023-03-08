@@ -52,6 +52,10 @@ Build the kernel and KEXT collection
 ```bash
 KERNEL_CONFIG=RELEASE ARCH_CONFIG=ARM64 MACHINE_CONFIG=T6000 ./build.sh --kc
 ```
+
+> **Note**  
+> Supported `MACHINE_CONFIG` include: `T8101`, `T8103`, `T6000` and `VMAPPLE`
+
 ```bash
 <SNIP>
  ⇒ 📦 Building kext collection for 'kernel.release.t6000'
@@ -91,9 +95,6 @@ Flags         = None
 004: LC_SEGMENT_64 sz=0x00008000 off=0x00000000-0x00008000 addr=0xfffffe0007004000-0xfffffe000700c000 r--/r--   __TEXT  
 <SNIP>
 ```
-
-> **Note**
-> Supported `MACHINE_CONFIG` include: `T8101`, `T8103`, `T6000` and `VMAPPLE`
 
 Clean rebuild the kernel and KEXT collection
 
