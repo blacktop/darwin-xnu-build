@@ -34,6 +34,19 @@ git clone https://github.com/blacktop/darwin-xnu-build.git
 cd darwin-xnu-build
 ```
 
+```bash
+❯ ./build.sh --help
+
+Usage: build.sh [-h] [--clean] [--kc]
+
+This script builds the macOS XNU kernel
+
+Where:
+    -h|--help       show this help text
+    -c|--clean      cleans build artifacts and cloned repos
+    -k|--kc         create Kext Collection (via kmutil create)
+```    
+
 Build the kernel and KEXT collection
 
 ```bash
@@ -79,7 +92,8 @@ Flags         = None
 <SNIP>
 ```
 
-> **NOTE:** Supported `MACHINE_CONFIG` include: `T8101`, `T8103`, `T6000` and `VMAPPLE`
+> **Note**
+> Supported `MACHINE_CONFIG` include: `T8101`, `T8103`, `T6000` and `VMAPPLE`
 
 Clean rebuild the kernel and KEXT collection
 

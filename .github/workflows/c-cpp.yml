@@ -24,17 +24,17 @@ jobs:
       - name: Build XNU
         run: |      
           kmutil create --help
-          XNU_VERSION='macOS 13.2' bash build.sh --kc
+          XNU_VERSION='macOS 13.2' MACHINE_CONFIG=T6000 bash build.sh --kc
       - uses: actions/upload-artifact@v3
         with:
-          name: xnu-build
+          name: xnu-build-macos13_2
           path: |
             build/xnu.obj/kernel.release.vmapple
             build/oss-xnu.kc
       - name: Build XNU CodeQL Database
         run: |
-          XNU_VERSION='macOS 13.2' bash codeql.sh
+          XNU_VERSION='macOS 13.2' MACHINE_CONFIG=T6000 bash codeql.sh
       - uses: actions/upload-artifact@v3
         with:
-          name: xnu-codeql
+          name: xnu-codeql-macos13_2
           path: xnu-codeql.zip
