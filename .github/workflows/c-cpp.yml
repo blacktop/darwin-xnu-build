@@ -29,8 +29,8 @@ jobs:
         with:
           name: xnu-build-macos13_2
           path: |
-            build/xnu.obj/kernel.release.vmapple
-            build/oss-xnu.kc
+            fakeroot/System/Library/Kernels/
+            fakeroot/oss-xnu.kc
       - name: Build XNU CodeQL Database
         run: |
           XNU_VERSION='macOS 13.2' MACHINE_CONFIG=T6000 bash codeql.sh

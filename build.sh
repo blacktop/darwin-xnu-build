@@ -94,13 +94,13 @@ install_deps() {
         fi
         brew install jq gum xcodes bash
     fi
-    if [ ! -d "/Applications/Xcode.app" ] && [ ! -d "/Applications/Xcode-beta.app" ]; then
+    if compgen -G "/Applications/Xcode*.app" > /dev/null; then
         running "Installing XCode"
         gum style --border normal --margin "1" --padding "1 2" --border-foreground 212 "Choose $(gum style --foreground 212 'XCode') to install:"
         XCODE_VERSION=$(gum choose "13.4.1" "14.0.1" "14.1" "14.2" "14.3-beta")
         curl -o /tmp/Xcode_${XCODE_VERSION}.xip "https://storage.googleapis.com/xcodes-cache/Xcode_${XCODE_VERSION}.xip"
-        xcodes install ${XCODE_VERSION} --experimental-unxip --path /tmp/Xcode_${XCODE_VERSION}.xip
-        xcodebuild -downloadAllPlatforms
+        xcodes install ${XCODE_VERSION} --experimental-unxip --color --select --path /tmp/Xcode_${XCODE_VERSION}.xip
+        # xcodebuild -downloadAllPlatforms
         xcodebuild -runFirstLaunch
     fi
 }
@@ -322,15 +322,17 @@ build_kc() {
     if [ -f "${BUILD_DIR}/xnu.obj/kernel.${KERNEL_CONFIG,,}.${MACHINE_CONFIG,,}" ]; then
         running "📦 Building kext collection for kernel.$(echo $KERNEL_CONFIG | tr '[:upper:]' '[:lower:]').$(echo $MACHINE_CONFIG | tr '[:upper:]' '[:lower:]')"
         kmutil create -v -V release -a arm64e -n boot \
-            -B ${BUILD_DIR}/oss-xnu.kc \
+            --kdk ${KDKROOT} \
+            -B ${DSTROOT}/oss-xnu.kc \
             -k ${BUILD_DIR}/xnu.obj/kernel.$(echo $KERNEL_CONFIG | tr '[:upper:]' '[:lower:]').$(echo $MACHINE_CONFIG | tr '[:upper:]' '[:lower:]') \
             --elide-identifier com.apple.driver.SEPHibernation \
             --elide-identifier com.apple.iokit.IOSkywalkFamily \
             -r ${KDKROOT}/System/Library/Extensions \
             -r /System/Library/Extensions \
             -r /System/Library/DriverExtensions \
-            -x $(ipsw kernel kmutil inspect -x --filter 'com.apple.iokit.IOSkywalkFamily|com.apple.driver.SEPHibernation') # this will skip IOSkywalkFamily and SEPHibernation (and other kexts with them as dependencies)
-            # --kdk ${KDKROOT} \
+            -F "'CFBundleExecutable' == 'IOSkywalkFamily'" \
+            -F "'CFBundleExecutable' == 'SEPHibernation'" \
+            -x $(ipsw kernel kmutil inspect -x --filter 'com.apple.driver.SEPHibernation') # this will skip IOSkywalkFamily and SEPHibernation (and other kexts with them as dependencies)
             # -x $(kmutil inspect -V release --no-header | grep apple | grep -v "SEPHiber\|IOSkywalkFamily" | awk '{print " -b "$1; }')
     fi
 }
@@ -355,19 +357,19 @@ main() {
             ;;
         esac
     done
-    install_deps
-    choose_xnu
-    get_xnu
-    patches
-    venv
-    build_dtrace
-    build_availabilityversions
-    xnu_headers
-    libsystem_headers
-    libsyscall_headers
-    build_libplatform
-    build_libdispatch
-    build_xnu
+    # install_deps
+    # choose_xnu
+    # get_xnu
+    # patches
+    # venv
+    # build_dtrace
+    # build_availabilityversions
+    # xnu_headers
+    # libsystem_headers
+    # libsyscall_headers
+    # build_libplatform
+    # build_libdispatch
+    # build_xnu
     if [ "$BUILDKC" -ne "0" ]; then
         install_ipsw
         build_kc
