@@ -324,7 +324,6 @@ build_kc() {
     if [ -f "${BUILD_DIR}/xnu.obj/kernel.${KERNEL_CONFIG,,}.${MACHINE_CONFIG,,}" ]; then
         running "📦 Building kext collection for kernel.$(echo $KERNEL_CONFIG | tr '[:upper:]' '[:lower:]').$(echo $MACHINE_CONFIG | tr '[:upper:]' '[:lower:]')"
         kmutil create -v -V release -a arm64e -n boot \
-            --kdk ${KDKROOT} \
             -B ${DSTROOT}/oss-xnu.kc \
             -k ${BUILD_DIR}/xnu.obj/kernel.$(echo $KERNEL_CONFIG | tr '[:upper:]' '[:lower:]').$(echo $MACHINE_CONFIG | tr '[:upper:]' '[:lower:]') \
             --elide-identifier com.apple.driver.SEPHibernation \
@@ -336,6 +335,7 @@ build_kc() {
             -F "'CFBundleExecutable' == 'SEPHibernation'" \
             -x $(ipsw kernel kmutil inspect -x --filter 'com.apple.driver.SEPHibernation') # this will skip IOSkywalkFamily and SEPHibernation (and other kexts with them as dependencies)
             # -x $(kmutil inspect -V release --no-header | grep apple | grep -v "SEPHiber\|IOSkywalkFamily" | awk '{print " -b "$1; }')
+            # --kdk ${KDKROOT} \ # not supported in older versions of kmutil
     fi
 }
 
