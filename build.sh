@@ -95,6 +95,8 @@ install_deps() {
         brew install jq gum xcodes bash
     fi
     if compgen -G "/Applications/Xcode*.app" > /dev/null; then
+        info "Xcode is already installed: $(xcode-select -p)"
+    else
         running "Installing XCode"
         gum style --border normal --margin "1" --padding "1 2" --border-foreground 212 "Choose $(gum style --foreground 212 'XCode') to install:"
         XCODE_VERSION=$(gum choose "13.4.1" "14.0.1" "14.1" "14.2" "14.3-beta")
