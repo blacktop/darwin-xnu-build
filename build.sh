@@ -357,19 +357,19 @@ main() {
             ;;
         esac
     done
-    # install_deps
-    # choose_xnu
-    # get_xnu
-    # patches
-    # venv
-    # build_dtrace
-    # build_availabilityversions
-    # xnu_headers
-    # libsystem_headers
-    # libsyscall_headers
-    # build_libplatform
-    # build_libdispatch
-    # build_xnu
+    install_deps
+    choose_xnu
+    get_xnu
+    patches
+    venv
+    build_dtrace
+    build_availabilityversions
+    xnu_headers
+    libsystem_headers
+    libsyscall_headers
+    build_libplatform
+    build_libdispatch
+    build_xnu
     if [ "$BUILDKC" -ne "0" ]; then
         install_ipsw
         build_kc
