@@ -31,10 +31,10 @@ index 170382f0f..9ad34ed76 100644
  #endif /* KERNEL */
  #endif /* PRIVATE */
 diff --git a/bsd/skywalk/packet/packet_kern.c b/bsd/skywalk/packet/packet_kern.c
-index d52fddc46..f85d869f8 100644
+index d52fddc46..10da9ce73 100644
 --- a/bsd/skywalk/packet/packet_kern.c
 +++ b/bsd/skywalk/packet/packet_kern.c
-@@ -287,6 +287,38 @@ kern_packet_get_inet_checksum(const kern_packet_t ph, uint16_t *start,
+@@ -287,6 +287,36 @@ kern_packet_get_inet_checksum(const kern_packet_t ph, uint16_t *start,
  	return __packet_get_inet_checksum(ph, start, val, tx);
  }
  
@@ -47,7 +47,7 @@ index d52fddc46..f85d869f8 100644
 +	if (cmd > 7)
 +		return 22;
 +	result = 0;
-+	// *(_WORD *)((ph & 0xFFFFFFFFFFFFFFF0LL) + 0xD4) |= ((cmd & 7) << 6) | 0x8000;
++	PKT_ADDR(ph)->pkt_fpd_metadata |= ((cmd & 7) << 6) | 0x8000;
 +	return result;
 +}
 +
@@ -55,10 +55,8 @@ index d52fddc46..f85d869f8 100644
 +kern_packet_set_fpd_sequence_number(const kern_packet_t ph,
 +									uint32_t seq_num)
 +{
-+	// kern_packet_t v2;
-+	// v2 = ph & 0xFFFFFFFFFFFFFFF0;
-+	// *(_DWORD *)(v2 + 208) = seq_num;
-+	// *(_WORD *)(v2 + 212) = *(_WORD *)((ph & 0xFFFFFFFFFFFFFFF0LL) + 0xD4) | 0x8000;
++	PKT_ADDR(ph)->pkt_fpd_seqnum = seq_num;
++	PKT_ADDR(ph)->pkt_fpd_metadata |= 0x8000;
 +	return 0;
 +}
 +
@@ -66,13 +64,28 @@ index d52fddc46..f85d869f8 100644
 +kern_packet_set_fpd_context_id(const kern_packet_t ph,
 +							   uint16_t ctx_id)
 +{
-+	// *(_WORD *)((ph & 0xFFFFFFFFFFFFFFF0LL) + 0xD4) |= ctx_id & 0x3F | 0x8000;
++	PKT_ADDR(ph)->pkt_fpd_metadata |= ctx_id & 0x3F | 0x8000;
 +	return 0;
 +}
 +
  void
  kern_packet_set_flow_uuid(const kern_packet_t ph, const uuid_t flow_uuid)
  {
+diff --git a/bsd/skywalk/packet/packet_var.h b/bsd/skywalk/packet/packet_var.h
+index 001d2a1db..390f6365e 100644
+--- a/bsd/skywalk/packet/packet_var.h
++++ b/bsd/skywalk/packet/packet_var.h
+@@ -474,7 +474,9 @@ struct __kern_packet {
+ 
+ 	void *      pkt_priv;   /* free to use for every layer */
+ 
+-
++	uint32_t               pkt_fpd_seqnum;   // @ 0xd0
++	uint16_t               pkt_fpd_metadata; // @ 0xd4
++	
+ 	/*
+ 	 * Kernel specific.
+ 	 *
 diff --git a/config/Private.exports b/config/Private.exports
 index 779bc8cb4..ce0e8ca60 100644
 --- a/config/Private.exports
