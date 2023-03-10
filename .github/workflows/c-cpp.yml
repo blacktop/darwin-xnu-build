@@ -20,9 +20,9 @@ jobs:
           brew update
           brew install bash
 
-      # - name: Build XNU JSON compilation database
-      #   run: |
-      #     XNU_VERSION='macOS 13.2' JSONDB=1 bash build.sh
+      - name: Build XNU JSON compilation database
+        run: |
+          XNU_VERSION='macOS 13.2' MACHINE_CONFIG=T6000 JSONDB=1 bash build.sh
 
       - name: kmutil help # This is to check for what flags are available
         run: kmutil create --help

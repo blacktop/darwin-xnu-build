@@ -45,6 +45,7 @@ FAKEROOT_DIR=${WORK_DIR}/fakeroot
 DSTROOT=${FAKEROOT_DIR}
 
 KERNEL_FRAMEWORK_ROOT='/System/Library/Frameworks/Kernel.framework/Versions/A'
+KERNEL_NAME="kernel.$(echo $KERNEL_CONFIG | tr '[:upper:]' '[:lower:]').$(echo $MACHINE_CONFIG | tr '[:upper:]' '[:lower:]')"
 
 : ${RELEASE_URL:='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-132/release.json'}
 : ${KDKROOT:='/Library/Developer/KDKs/KDK_13.2_22D49.kdk'}
@@ -289,39 +290,42 @@ build_libdispatch() {
 }
 
 build_xnu() {
-    if [ "$JSONDB" -ne "0" ]; then
-        running "📦 Building XNU kernel with JSON compilation database"
-        if [ ! -d "${KDKROOT}" ]; then
-            error "KDKROOT not found: ${KDKROOT} - please install from the Developer Portal"
-            exit 1
+    if [ ! -f "${BUILD_DIR}/xnu.obj/$KERNEL_NAME" ]; then
+        if [ "$JSONDB" -ne "0" ]; then
+            running "📦 Building XNU kernel with JSON compilation database"
+            if [ ! -d "${KDKROOT}" ]; then
+                error "KDKROOT not found: ${KDKROOT} - please install from the Developer Portal"
+                exit 1
+            fi
+            SRCROOT=${WORK_DIR}/xnu
+            OBJROOT=${BUILD_DIR}/xnu-compiledb.obj
+            SYMROOT=${BUILD_DIR}/xnu-compiledb.sym
+            rm -rf ${OBJROOT}
+            rm -rf ${SYMROOT}
+            cd ${SRCROOT}
+            make SDKROOT=macosx TARGET_CONFIGS="$KERNEL_CONFIG $ARCH_CONFIG $MACHINE_CONFIG" LOGCOLORS=y BUILD_WERROR=0 BUILD_LTO=0 BUILD_JSON_COMPILATION_DATABASE=1 SRCROOT=${SRCROOT} OBJROOT=${OBJROOT} SYMROOT=${SYMROOT} DSTROOT=${DSTROOT} FAKEROOT_DIR=${FAKEROOT_DIR} KDKROOT=${KDKROOT} || true
+            JSON_COMPILE_DB=$(find ${OBJROOT} -name compile_commands.json)
+            info "JSON compilation database: ${JSON_COMPILE_DB}"
+            cp -f ${JSON_COMPILE_DB} ${SRCROOT}
+        else
+            running "📦 Building XNU kernel TARGET_CONFIGS=\"$KERNEL_CONFIG $ARCH_CONFIG $MACHINE_CONFIG\""
+            if [ ! -d "${KDKROOT}" ]; then
+                error "KDKROOT not found: ${KDKROOT} - please install from the Developer Portal"
+                exit 1
+            fi
+            SRCROOT=${WORK_DIR}/xnu
+            OBJROOT=${BUILD_DIR}/xnu.obj
+            SYMROOT=${BUILD_DIR}/xnu.sym
+            cd ${SRCROOT}
+            make install -j8 SDKROOT=macosx TARGET_CONFIGS="$KERNEL_CONFIG $ARCH_CONFIG $MACHINE_CONFIG" CONCISE=1 LOGCOLORS=y BUILD_WERROR=0 BUILD_LTO=0 SRCROOT=${SRCROOT} OBJROOT=${OBJROOT} SYMROOT=${SYMROOT} DSTROOT=${DSTROOT} FAKEROOT_DIR=${FAKEROOT_DIR} KDKROOT=${KDKROOT}
+            cd ${WORK_DIR}
         fi
-        SRCROOT=${WORK_DIR}/xnu
-        OBJROOT=${BUILD_DIR}/xnu-compiledb.obj
-        SYMROOT=${BUILD_DIR}/xnu-compiledb.sym
-        rm -rf ${OBJROOT}
-        rm -rf ${SYMROOT}
-        cd ${SRCROOT}
-        make SDKROOT=macosx TARGET_CONFIGS="$KERNEL_CONFIG $ARCH_CONFIG $MACHINE_CONFIG" LOGCOLORS=y BUILD_WERROR=0 BUILD_LTO=0 BUILD_JSON_COMPILATION_DATABASE=1 SRCROOT=${SRCROOT} OBJROOT=${OBJROOT} SYMROOT=${SYMROOT} DSTROOT=${DSTROOT} FAKEROOT_DIR=${FAKEROOT_DIR} KDKROOT=${KDKROOT} || true
-        JSON_COMPILE_DB=$(find ${OBJROOT} -name compile_commands.json)
-        info "JSON compilation database: ${JSON_COMPILE_DB}"
-        cp -f ${JSON_COMPILE_DB} ${SRCROOT}
     else
-        running "📦 Building XNU kernel TARGET_CONFIGS=\"$KERNEL_CONFIG $ARCH_CONFIG $MACHINE_CONFIG\""
-        if [ ! -d "${KDKROOT}" ]; then
-            error "KDKROOT not found: ${KDKROOT} - please install from the Developer Portal"
-            exit 1
-        fi
-        SRCROOT=${WORK_DIR}/xnu
-        OBJROOT=${BUILD_DIR}/xnu.obj
-        SYMROOT=${BUILD_DIR}/xnu.sym
-        cd ${SRCROOT}
-        make install -j8 SDKROOT=macosx TARGET_CONFIGS="$KERNEL_CONFIG $ARCH_CONFIG $MACHINE_CONFIG" CONCISE=1 LOGCOLORS=y BUILD_WERROR=0 BUILD_LTO=0 SRCROOT=${SRCROOT} OBJROOT=${OBJROOT} SYMROOT=${SYMROOT} DSTROOT=${DSTROOT} FAKEROOT_DIR=${FAKEROOT_DIR} KDKROOT=${KDKROOT}
-        cd ${WORK_DIR}
+        info "📦 XNU $KERNEL_NAME already built"
     fi
 }
 
 build_kc() {
-    KERNEL_NAME="kernel.$(echo $KERNEL_CONFIG | tr '[:upper:]' '[:lower:]').$(echo $MACHINE_CONFIG | tr '[:upper:]' '[:lower:]')"
     if [ -f "${BUILD_DIR}/xnu.obj/$KERNEL_NAME" ]; then
         running "📦 Building kext collection for $KERNEL_NAME"
         kmutil create -v -V release -a arm64e -n boot \
@@ -368,7 +372,7 @@ main() {
     libsyscall_headers
     build_libplatform
     build_libdispatch
-    # build_xnu
+    build_xnu
     if [ "$BUILDKC" -ne "0" ]; then
         build_kc
     fi
