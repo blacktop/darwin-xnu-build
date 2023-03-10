@@ -315,7 +315,7 @@ build_xnu() {
         OBJROOT=${BUILD_DIR}/xnu.obj
         SYMROOT=${BUILD_DIR}/xnu.sym
         cd ${SRCROOT}
-        make install -j8 SDKROOT=macosx TARGET_CONFIGS="$KERNEL_CONFIG $ARCH_CONFIG $MACHINE_CONFIG" CONCISE=0 LOGCOLORS=y BUILD_WERROR=0 BUILD_LTO=0 SRCROOT=${SRCROOT} OBJROOT=${OBJROOT} SYMROOT=${SYMROOT} DSTROOT=${DSTROOT} FAKEROOT_DIR=${FAKEROOT_DIR} KDKROOT=${KDKROOT}
+        make install -j8 SDKROOT=macosx TARGET_CONFIGS="$KERNEL_CONFIG $ARCH_CONFIG $MACHINE_CONFIG" CONCISE=1 LOGCOLORS=y BUILD_WERROR=0 BUILD_LTO=0 SRCROOT=${SRCROOT} OBJROOT=${OBJROOT} SYMROOT=${SYMROOT} DSTROOT=${DSTROOT} FAKEROOT_DIR=${FAKEROOT_DIR} KDKROOT=${KDKROOT}
         cd ${WORK_DIR}
     fi
 }
@@ -326,16 +326,11 @@ build_kc() {
         kmutil create -v -V release -a arm64e -n boot \
             -B ${DSTROOT}/oss-xnu.kc \
             -k ${BUILD_DIR}/xnu.obj/kernel.$(echo $KERNEL_CONFIG | tr '[:upper:]' '[:lower:]').$(echo $MACHINE_CONFIG | tr '[:upper:]' '[:lower:]') \
-            --elide-identifier com.apple.driver.SEPHibernation \
-            --elide-identifier com.apple.iokit.IOSkywalkFamily \
             -r ${KDKROOT}/System/Library/Extensions \
             -r /System/Library/Extensions \
             -r /System/Library/DriverExtensions \
             -F "'CFBundleExecutable' == 'IOSkywalkFamily'" \
-            -F "'CFBundleExecutable' == 'SEPHibernation'" \
-            -x $(ipsw kernel kmutil inspect -x --filter 'com.apple.driver.SEPHibernation') # this will skip IOSkywalkFamily and SEPHibernation (and other kexts with them as dependencies)
-            # -x $(kmutil inspect -V release --no-header | grep apple | grep -v "SEPHiber\|IOSkywalkFamily" | awk '{print " -b "$1; }')
-            # --kdk ${KDKROOT} \ # not supported in older versions of kmutil
+            -F "'CFBundleExecutable' == 'SEPHibernation'"
     fi
 }
 
@@ -373,7 +368,6 @@ main() {
     build_libdispatch
     build_xnu
     if [ "$BUILDKC" -ne "0" ]; then
-        install_ipsw
         build_kc
     fi
     echo "  🎉 XNU Build Done!"
