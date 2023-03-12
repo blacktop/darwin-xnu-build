@@ -9,9 +9,10 @@
 ## Dependencies
 
 - [homebrew](https://brew.sh)
-  - jq
-  - gum
-  - xcodes
+  - [jq](https://stedolan.github.io/jq/)
+  - [gum](https://github.com/charmbracelet/gum)
+  - [xcodes](https://github.com/RobotsAndPencils/xcodes)
+  - [ipsw](https://github.com/blacktop/ipsw)
 - XCode
 - python3
 - [codeql CLI](https://codeql.github.com/docs/codeql-cli/)
