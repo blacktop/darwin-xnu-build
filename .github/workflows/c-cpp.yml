@@ -22,25 +22,25 @@ jobs:
 
       - name: Build XNU JSON compilation database
         run: |
-          XNU_VERSION='macOS 13.2' MACHINE_CONFIG=T6000 JSONDB=1 bash build.sh
+          XNU_VERSION='macOS 13.0' MACHINE_CONFIG=T6000 JSONDB=1 bash build.sh
 
       - name: kmutil help # This is to check for what flags are available
         run: kmutil create --help
         
       - name: Build XNU
-        run: XNU_VERSION='macOS 13.2' MACHINE_CONFIG=T6000 bash build.sh --kc
+        run: XNU_VERSION='macOS 13.0' MACHINE_CONFIG=T6000 bash build.sh --kc
 
       - uses: actions/upload-artifact@v3
         with:
-          name: xnu-build-macos-13.2
+          name: xnu-build-macos-13.0
           path: |
             fakeroot/System/Library/Kernels/
             fakeroot/oss-xnu.kc
 
       - name: Build XNU CodeQL Database
-        run: XNU_VERSION='macOS 13.2' MACHINE_CONFIG=T6000 bash codeql.sh
+        run: XNU_VERSION='macOS 13.0' MACHINE_CONFIG=T6000 bash codeql.sh
 
       - uses: actions/upload-artifact@v3
         with:
-          name: xnu-codeql-macos-13.2
+          name: xnu-codeql-macos-13.0
           path: xnu-codeql.zip
