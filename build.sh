@@ -335,8 +335,8 @@ build_kc() {
             -r ${KDKROOT}/System/Library/Extensions \
             -r /System/Library/Extensions \
             -r /System/Library/DriverExtensions \
-            -x $(ipsw kernel kmutil inspect -x --filter 'com.apple.driver.SEPHibernation') # this will skip IOSkywalkFamily and SEPHibernation (and other kexts with them as dependencies)
-            # -x $(kmutil inspect -V release --no-header | grep apple | grep -v "SEPHiber\|IOSkywalkFamily" | awk '{print " -b "$1; }')
+            -x $(kmutil inspect -V release --no-header | grep apple | grep -v "SEPHibernation" | awk '{print " -b "$1; }')
+            # -x $(ipsw kernel kmutil inspect -x --filter 'com.apple.driver.SEPHibernation') # this will skip SEPHibernation (and other KEXTs with them as dependencies)
             # --kdk ${KDKROOT} # not supported in older versions of kmutil \
     fi
 }

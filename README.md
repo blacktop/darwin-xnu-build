@@ -9,10 +9,11 @@
 ## Dependencies
 
 - [homebrew](https://brew.sh)
+  - jq
+  - gum
+  - xcodes
 - XCode
 - python3
-- jq
-- [ipsw](https://github.com/blacktop/ipsw)
 - [codeql CLI](https://codeql.github.com/docs/codeql-cli/)
 
 ## Supported OS Versions
@@ -111,10 +112,10 @@ Generate a CodeQL database
 ```bash
 <SNIP>
 [2023-03-03 22:33:20] [build-stdout]   🎉 XNU Build Done!
-Finalizing database at /Users/blacktop/Developer/Github/blacktop/darwin-xnu-build/xnu-codeql.
-Running TRAP import for CodeQL database at /Users/blacktop/Developer/Github/blacktop/darwin-xnu-build/xnu-codeql...
+Finalizing database at darwin-xnu-build/xnu-codeql.
+Running TRAP import for CodeQL database at darwin-xnu-build/xnu-codeql...
 TRAP import complete (1m46s).
-Successfully created database at /Users/blacktop/Developer/Github/blacktop/darwin-xnu-build/xnu-codeql.
+Successfully created database at darwin-xnu-build/xnu-codeql.
 [info] Deleting log files...
 [info] Zipping the CodeQL database...
   🎉 CodeQL Database Create Done!
@@ -131,6 +132,14 @@ Zips up the CodeQL database
 
 - [x] Auto build xnu with Github Actions
 - [x] Auto generate CodeQL database with Github Actions
+
+## NOTES
+
+To see kernel logs
+
+```bash
+log show --debug --last boot --predicate 'process == "kernel"'
+```
 
 ## Credit
 
