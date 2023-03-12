@@ -335,8 +335,8 @@ build_kc() {
             -r ${KDKROOT}/System/Library/Extensions \
             -r /System/Library/Extensions \
             -r /System/Library/DriverExtensions \
-            -x $(kmutil inspect -V release --no-header | grep apple | grep -v "SEPHibernation" | awk '{print " -b "$1; }')
-            # -x $(ipsw kernel kmutil inspect -x --filter 'com.apple.driver.SEPHibernation') # this will skip SEPHibernation (and other KEXTs with them as dependencies)
+            -x $(ipsw kernel kmutil inspect -x --filter 'com.apple.driver.SEPHibernation') # this will skip SEPHibernation (and other KEXTs with them as dependencies)
+            # -x $(kmutil inspect -V release --no-header | grep apple | grep -v "SEPHibernation" | awk '{print " -b "$1; }')
             # --kdk ${KDKROOT} # not supported in older versions of kmutil \
     fi
 }
@@ -375,6 +375,7 @@ main() {
     build_libdispatch
     build_xnu
     if [ "$BUILDKC" -ne "0" ]; then
+        install_ipsw
         build_kc
     fi
     echo "  🎉 XNU Build Done!"
