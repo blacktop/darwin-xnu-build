@@ -25,7 +25,9 @@ jobs:
           XNU_VERSION='macOS 13.0' MACHINE_CONFIG=T6000 JSONDB=1 bash build.sh
 
       - name: kmutil help # This is to check for what flags are available
-        run: kmutil create --help
+        run: |
+          kmutil inspect
+          kmutil create --help
         
       - name: Build XNU
         run: XNU_VERSION='macOS 13.0' MACHINE_CONFIG=T6000 bash build.sh --kc
