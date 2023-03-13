@@ -68,7 +68,7 @@ Where:
 clean() {
     running "Cleaning build directories and extra repos..."
     read -p "Are you sure? " -n 1 -r
-    echo    # (optional) move to a new line
+    echo # (optional) move to a new line
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         info "deleting ${BUILD_DIR}"
         rm -rf ${BUILD_DIR}
@@ -97,7 +97,7 @@ install_deps() {
         fi
         brew install jq gum xcodes bash
     fi
-    if compgen -G "/Applications/Xcode*.app" > /dev/null; then
+    if compgen -G "/Applications/Xcode*.app" >/dev/null; then
         info "Xcode is already installed: $(xcode-select -p)"
     else
         running "Installing XCode"
@@ -112,7 +112,7 @@ install_deps() {
 
 install_ipsw() {
     if [ ! -x "$(command -v ipsw)" ]; then
-        running "Installing `ipsw`..."
+        running "Installing ipsw..."
         brew install blacktop/tap/ipsw
     fi
 }
@@ -153,6 +153,14 @@ choose_xnu() {
         sudo installer -pkg '/Volumes/Kernel Debug Kit/KernelDebugKit.pkg' -target /
         hdiutil detach '/Volumes/Kernel Debug Kit'
     fi
+}
+
+version_lte() {
+    [ "$1" = "$(echo -e "$1\n$2" | sort -V | head -n1)" ]
+}
+
+version_lt() {
+    [ "$1" = "$2" ] && return 1 || version_lte $1 $2
 }
 
 venv() {
@@ -339,15 +347,27 @@ build_xnu() {
 build_kc() {
     if [ -f "${BUILD_DIR}/xnu.obj/$KERNEL_NAME" ]; then
         running "📦 Building kext collection for $KERNEL_NAME"
-        kmutil create -v -V release -a arm64e -n boot \
-            -B ${DSTROOT}/oss-xnu.kc \
-            -k ${BUILD_DIR}/xnu.obj/$KERNEL_NAME \
-            -r ${KDKROOT}/System/Library/Extensions \
-            -r /System/Library/Extensions \
-            -r /System/Library/DriverExtensions \
-            -x $(ipsw kernel kmutil inspect -x --filter "'"${KC_FILTER}"'") # this will skip SEPHibernation (and other KEXTs with them as dependencies)
+        KMUTIL_VERSION=$(kmutil | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+')
+        if version_lt ${KMUTIL_VERSION} 1.0.0.0; then
+            kmutil create -v -V release -a arm64e -n boot \
+                -B ${DSTROOT}/oss-xnu.kc \
+                -k ${BUILD_DIR}/xnu.obj/$KERNEL_NAME \
+                -r ${KDKROOT}/System/Library/Extensions \
+                -r /System/Library/Extensions \
+                -r /System/Library/DriverExtensions \
+                -x $(ipsw kernel kmutil inspect -x --filter "'"${KC_FILTER}"'") # this will skip SEPHibernation (and other KEXTs with them as dependencies)
             # -x $(kmutil inspect -V release --no-header | grep apple | grep -v "SEPHibernation" | awk '{print " -b "$1; }')
-            # --kdk ${KDKROOT} # not supported in older versions of kmutil \
+        else
+            kmutil create -v -V release -a arm64e -n boot \
+                --kdk ${KDKROOT} \
+                -B ${DSTROOT}/oss-xnu.kc \
+                -k ${BUILD_DIR}/xnu.obj/$KERNEL_NAME \
+                -r ${KDKROOT}/System/Library/Extensions \
+                -r /System/Library/Extensions \
+                -r /System/Library/DriverExtensions \
+                -x $(ipsw kernel kmutil inspect -x --filter "'"${KC_FILTER}"'") # this will skip SEPHibernation (and other KEXTs with them as dependencies)
+            # -x $(kmutil inspect -V release --no-header | grep apple | grep -v "SEPHibernation" | awk '{print " -b "$1; }')
+        fi
     fi
 }
 
@@ -355,18 +375,19 @@ main() {
     # Parse arguments
     while test $# -gt 0; do
         case "$1" in
-            -h|--help)
-                help
-                ;;
-            -c|--clean)
-                clean
-                shift
-                ;;
-            -k|--kc)
-                export BUILDKC=1
-                shift
-                ;;
-            *)
+        -h | --help)
+            help
+            exit 0
+            ;;
+        -c | --clean)
+            clean
+            shift
+            ;;
+        -k | --kc)
+            export BUILDKC=1
+            shift
+            ;;
+        *)
             break
             ;;
         esac
