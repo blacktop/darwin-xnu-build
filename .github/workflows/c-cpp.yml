@@ -15,7 +15,7 @@ jobs:
     runs-on: macos-latest
     strategy:
       matrix:
-        macos-version: [ 'macOS 13.0', 'macOS 13.1', 'macOS 13.2' ]
+        macos-version: [ '13.0', '13.1', '13.2' ]
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -34,26 +34,34 @@ jobs:
           kmutil create --help
           kmutil inspect
 
-      # - name: Build XNU JSON compilation database
-      #   run: |
-      #     XNU_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=T6000 JSONDB=1 bash build.sh
+      - name: Cache JSONDB
+        id: cache-jsondb
+        uses: actions/cache@v3
+        with:
+          path: .cache/${{ matrix.macos-version }}/compile_commands.json
+          key: ${{ matrix.macos-version }}-jsondb
+
+      - name: Build XNU JSON compilation database
+        if: steps.cache-jsondb.outputs.cache-hit != 'true'
+        run: |
+          MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=T6000 JSONDB=1 bash build.sh
 
       - name: Build XNU
         run: |
-          XNU_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=T6000 bash build.sh --kc
+          MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=T6000 bash build.sh --kc
           ipsw macho info fakeroot/oss-xnu.kc
 
       - uses: actions/upload-artifact@v3
         with:
-          name: xnu-build ${{ matrix.macos-version }}
+          name: xnu-build-${{ matrix.macos-version }}
           path: |
             fakeroot/System/Library/Kernels/
             fakeroot/oss-xnu.kc
 
       - name: Build XNU CodeQL Database
-        run: XNU_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=T6000 bash codeql.sh
+        run: MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=T6000 bash codeql.sh
 
       - uses: actions/upload-artifact@v3
         with:
-          name: xnu-codeql ${{ matrix.macos-version }}
+          name: xnu-codeql-${{ matrix.macos-version }}
           path: xnu-codeql.zip

@@ -35,11 +35,12 @@ function error() {
 : ${KERNEL_CONFIG:=RELEASE}
 : ${ARCH_CONFIG:=ARM64}
 : ${MACHINE_CONFIG:=VMAPPLE}
-: ${XNU_VERSION:=''}
+: ${MACOS_VERSION:=''}
 : ${JSONDB:=0}
 : ${BUILDKC:=0}
 
 WORK_DIR="$PWD"
+CACHE_DIR=${WORK_DIR}/.cache
 BUILD_DIR=${WORK_DIR}/build
 FAKEROOT_DIR=${WORK_DIR}/fakeroot
 DSTROOT=${FAKEROOT_DIR}
@@ -116,22 +117,22 @@ install_ipsw() {
 }
 
 choose_xnu() {
-    if [ -z "$XNU_VERSION"]; then
-        gum style --border normal --margin "1" --padding "1 2" --border-foreground 212 "Choose $(gum style --foreground 212 'xnu') version to install:"
-        XNU_VERSION=$(gum choose "macOS 13.0" "macOS 13.1" "macOS 13.2")
+    if [ -z "$MACOS_VERSION"]; then
+        gum style --border normal --margin "1" --padding "1 2" --border-foreground 212 "Choose $(gum style --foreground 212 'macOS') version to build:"
+        MACOS_VERSION=$(gum choose "13.0" "13.1" "13.2")
     fi
-    case ${XNU_VERSION} in
-    'macOS 13.0')
+    case ${MACOS_VERSION} in
+    '13.0')
         RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-130/release.json'
         KDK_NAME='Kernel Debug Kit 13.0 build 22A380'
         KDKROOT='/Library/Developer/KDKs/KDK_13.0_22A380.kdk'
         ;;
-    'macOS 13.1')
+    '13.1')
         RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-131/release.json'
         KDK_NAME='Kernel Debug Kit 13.1 build 22C65'
         KDKROOT='/Library/Developer/KDKs/KDK_13.1_22C65.kdk'
         ;;
-    'macOS 13.2')
+    '13.2')
         RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-132/release.json'
         KDK_NAME='Kernel Debug Kit 13.2 build 22D49'
         KDKROOT='/Library/Developer/KDKs/KDK_13.2_22D49.kdk'
@@ -141,6 +142,7 @@ choose_xnu() {
         exit 1
         ;;
     esac
+    info "Building XNU for macOS ${MACOS_VERSION}"
     if [ ! -d "$KDKROOT" ]; then
         KDK_URL=$(curl -s "https://raw.githubusercontent.com/dortania/KdkSupportPkg/gh-pages/manifest.json" | jq -r --arg KDK_NAME "$KDK_NAME" '.[] | select(.name==$KDK_NAME) | .url')
         running "Downloading '$KDK_NAME' to /tmp"
@@ -166,6 +168,10 @@ get_xnu() {
         running "⬇️ Cloning xnu"
         XNU_VERSION=$(curl -s $RELEASE_URL | jq -r '.projects[] | select(.project=="xnu") | .tag')
         git clone --branch ${XNU_VERSION} https://github.com/apple-oss-distributions/xnu.git ${WORK_DIR}/xnu
+    fi
+    if [ -f "${CACHE_DIR}/${MACOS_VERSION}/compile_commands.json" ]; then
+        info "Restoring cached ${CACHE_DIR}/${MACOS_VERSION}/compile_commands.json"
+        cp -f ${CACHE_DIR}/${MACOS_VERSION}/compile_commands.json ${WORK_DIR}/xnu
     fi
 }
 
@@ -308,6 +314,9 @@ build_xnu() {
             JSON_COMPILE_DB=$(find ${OBJROOT} -name compile_commands.json)
             info "JSON compilation database: ${JSON_COMPILE_DB}"
             cp -f ${JSON_COMPILE_DB} ${SRCROOT}
+            mkdir -p ${CACHE_DIR}/${MACOS_VERSION}
+            info "Caching JSON compilation database in: ${CACHE_DIR}/${MACOS_VERSION}"
+            cp -f ${JSON_COMPILE_DB} ${CACHE_DIR}/${MACOS_VERSION}
         else
             running "📦 Building XNU kernel TARGET_CONFIGS=\"$KERNEL_CONFIG $ARCH_CONFIG $MACHINE_CONFIG\""
             if [ ! -d "${KDKROOT}" ]; then
