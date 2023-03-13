@@ -347,8 +347,8 @@ build_xnu() {
 build_kc() {
     if [ -f "${BUILD_DIR}/xnu.obj/$KERNEL_NAME" ]; then
         running "📦 Building kext collection for $KERNEL_NAME"
-        KMUTIL_VERSION=$(kmutil --help | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+')
-        if version_lt ${KMUTIL_VERSION} 331.0.0.0; then
+        HOST_VERSION=$(sw_vers -productVersion | grep -Eo '[0-9]+\.[0-9]+')
+        if version_lt ${HOST_VERSION} 13.0; then
             kmutil create -v -V release -a arm64e -n boot \
                 -B ${DSTROOT}/oss-xnu.kc \
                 -k ${BUILD_DIR}/xnu.obj/$KERNEL_NAME \
