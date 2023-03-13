@@ -6,9 +6,16 @@ on:
   pull_request:
     branches: [ main ]
 
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: macos-latest
+    strategy:
+      matrix:
+        macos-version: [ 'macOS 13.0', 'macOS 13.1', 'macOS 13.2' ]
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -28,22 +35,28 @@ jobs:
 
       - name: Build XNU JSON compilation database
         run: |
-          XNU_VERSION='macOS 13.0' MACHINE_CONFIG=T6000 JSONDB=1 bash build.sh
+          XNU_VERSION=${{ matrix.go-version }} MACHINE_CONFIG=T6000 JSONDB=1 bash build.sh
+        with:
+          macos-version: ${{ matrix.macos-version }}
 
       - name: Build XNU
-        run: XNU_VERSION='macOS 13.0' MACHINE_CONFIG=T6000 bash build.sh --kc
+        run: XNU_VERSION=${{ matrix.go-version }} MACHINE_CONFIG=T6000 bash build.sh --kc
+        with:
+          macos-version: ${{ matrix.macos-version }}
 
       - uses: actions/upload-artifact@v3
         with:
-          name: xnu-build-macos-13.0
+          name: xnu-build-${{ matrix.macos-version }}
           path: |
             fakeroot/System/Library/Kernels/
             fakeroot/oss-xnu.kc
 
       - name: Build XNU CodeQL Database
-        run: XNU_VERSION='macOS 13.0' MACHINE_CONFIG=T6000 bash codeql.sh
+        run: XNU_VERSION=${{ matrix.go-version }} MACHINE_CONFIG=T6000 bash codeql.sh
+        with:
+          macos-version: ${{ matrix.macos-version }}
 
       - uses: actions/upload-artifact@v3
         with:
-          name: xnu-codeql-macos-13.0
+          name: xnu-codeql-${{ matrix.macos-version }}
           path: xnu-codeql.zip
