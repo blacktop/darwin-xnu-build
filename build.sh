@@ -348,7 +348,7 @@ build_kc() {
     if [ -f "${BUILD_DIR}/xnu.obj/$KERNEL_NAME" ]; then
         running "📦 Building kext collection for $KERNEL_NAME"
         KMUTIL_VERSION=$(kmutil | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+')
-        if version_lt ${KMUTIL_VERSION} 1.0.0.0; then
+        if version_lt ${KMUTIL_VERSION} 331.0.0.0; then
             kmutil create -v -V release -a arm64e -n boot \
                 -B ${DSTROOT}/oss-xnu.kc \
                 -k ${BUILD_DIR}/xnu.obj/$KERNEL_NAME \
@@ -358,6 +358,7 @@ build_kc() {
                 -x $(ipsw kernel kmutil inspect -x --filter "'"${KC_FILTER}"'") # this will skip SEPHibernation (and other KEXTs with them as dependencies)
             # -x $(kmutil inspect -V release --no-header | grep apple | grep -v "SEPHibernation" | awk '{print " -b "$1; }')
         else
+            # Newer versions of kmutil support the --kdk option
             kmutil create -v -V release -a arm64e -n boot \
                 --kdk ${KDKROOT} \
                 -B ${DSTROOT}/oss-xnu.kc \

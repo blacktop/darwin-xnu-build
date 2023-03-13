@@ -25,15 +25,11 @@ jobs:
       - name: Deps
         run: |
           brew update
-          brew install bash fd
+          brew install bash
 
       - name: kmutil help # This is to check for what flags are available
         run: |
           sysctl -n kern.bootobjectspath || true
-          fd --color never kernelcache /
-          kmutil
-          kmutil | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+'
-          kmutil create --help
           kmutil inspect
 
       - name: Cache JSONDB
