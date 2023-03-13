@@ -15,8 +15,7 @@ jobs:
     runs-on: macos-latest
     strategy:
       matrix:
-        # macos-version: [ 'macOS 13.0', 'macOS 13.1', 'macOS 13.2' ]
-        macos-version: [ 'macOS 13.0', 'macOS 13.2' ]
+        macos-version: [ 'macOS 13.0', 'macOS 13.1', 'macOS 13.2' ]
     steps:
       - name: Checkout
         uses: actions/checkout@v3
