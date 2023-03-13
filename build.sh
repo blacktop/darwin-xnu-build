@@ -355,7 +355,7 @@ build_kc() {
                 -r ${KDKROOT}/System/Library/Extensions \
                 -r /System/Library/Extensions \
                 -r /System/Library/DriverExtensions \
-                -x $(ipsw kernel kmutil inspect -x --filter "'"${KC_FILTER}"'") # this will skip SEPHibernation (and other KEXTs with them as dependencies)
+                -x $(ipsw kernel kmutil inspect -x --filter ${KC_FILTER}) # this will skip SEPHibernation (and other KEXTs with them as dependencies)
             # -x $(kmutil inspect -V release --no-header | grep apple | grep -v "SEPHibernation" | awk '{print " -b "$1; }')
         else
             # Newer versions of kmutil support the --kdk option
@@ -366,7 +366,7 @@ build_kc() {
                 -r ${KDKROOT}/System/Library/Extensions \
                 -r /System/Library/Extensions \
                 -r /System/Library/DriverExtensions \
-                -x $(ipsw kernel kmutil inspect -x --filter "'"${KC_FILTER}"'") # this will skip SEPHibernation (and other KEXTs with them as dependencies)
+                -x $(ipsw kernel kmutil inspect -x --filter ${KC_FILTER}) # this will skip SEPHibernation (and other KEXTs with them as dependencies)
             # -x $(kmutil inspect -V release --no-header | grep apple | grep -v "SEPHibernation" | awk '{print " -b "$1; }')
         fi
     fi
