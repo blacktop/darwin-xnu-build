@@ -329,7 +329,7 @@ build_xnu() {
 build_kc() {
     if [ -f "${BUILD_DIR}/xnu.obj/$KERNEL_NAME" ]; then
         running "📦 Building kext collection for $KERNEL_NAME"
-        kmutil create -v -V release -a arm64e -n boot \
+        kmutil create -v --allow-missing-collections -V release -a arm64e -n boot \
             -B ${DSTROOT}/oss-xnu.kc \
             -k ${BUILD_DIR}/xnu.obj/$KERNEL_NAME \
             -r ${KDKROOT}/System/Library/Extensions \

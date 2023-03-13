@@ -38,7 +38,9 @@ jobs:
           XNU_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=T6000 JSONDB=1 bash build.sh
 
       - name: Build XNU
-        run: XNU_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=T6000 bash build.sh --kc
+        run: |
+          XNU_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=T6000 bash build.sh --kc
+          ipsw macho info fakeroot/oss-xnu.kc
 
       - uses: actions/upload-artifact@v3
         with:
