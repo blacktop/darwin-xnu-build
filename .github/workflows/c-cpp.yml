@@ -25,11 +25,12 @@ jobs:
       - name: Deps
         run: |
           brew update
-          brew install bash
+          brew install bash fd
 
       - name: kmutil help # This is to check for what flags are available
         run: |
           sysctl -n kern.bootobjectspath || true
+          fd kernelcache /
           kmutil create --help
           kmutil inspect
 
@@ -44,7 +45,7 @@ jobs:
 
       - uses: actions/upload-artifact@v3
         with:
-          name: xnu-build-${{ matrix.macos-version }}
+          name: xnu-build ${{ matrix.macos-version }}
           path: |
             fakeroot/System/Library/Kernels/
             fakeroot/oss-xnu.kc
@@ -54,5 +55,5 @@ jobs:
 
       - uses: actions/upload-artifact@v3
         with:
-          name: xnu-codeql-${{ matrix.macos-version }}
+          name: xnu-codeql ${{ matrix.macos-version }}
           path: xnu-codeql.zip
