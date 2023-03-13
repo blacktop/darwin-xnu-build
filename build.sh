@@ -38,6 +38,7 @@ function error() {
 : ${MACOS_VERSION:=''}
 : ${JSONDB:=0}
 : ${BUILDKC:=0}
+: ${KC_FILTER:='com.apple.driver.SEPHibernation'}
 
 WORK_DIR="$PWD"
 CACHE_DIR=${WORK_DIR}/.cache
@@ -338,13 +339,13 @@ build_xnu() {
 build_kc() {
     if [ -f "${BUILD_DIR}/xnu.obj/$KERNEL_NAME" ]; then
         running "📦 Building kext collection for $KERNEL_NAME"
-        kmutil create -v --allow-missing-collections -V release -a arm64e -n boot \
+        kmutil create -v -V release -a arm64e -n boot \
             -B ${DSTROOT}/oss-xnu.kc \
             -k ${BUILD_DIR}/xnu.obj/$KERNEL_NAME \
             -r ${KDKROOT}/System/Library/Extensions \
             -r /System/Library/Extensions \
             -r /System/Library/DriverExtensions \
-            -x $(ipsw kernel kmutil inspect -x --filter 'com.apple.driver.SEPHibernation|com.apple.iokit.IOACPIFamily') # this will skip SEPHibernation (and other KEXTs with them as dependencies)
+            -x $(ipsw kernel kmutil inspect -x --filter "'"${KC_FILTER}"'") # this will skip SEPHibernation (and other KEXTs with them as dependencies)
             # -x $(kmutil inspect -V release --no-header | grep apple | grep -v "SEPHibernation" | awk '{print " -b "$1; }')
             # --kdk ${KDKROOT} # not supported in older versions of kmutil \
     fi

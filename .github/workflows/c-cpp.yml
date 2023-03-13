@@ -25,12 +25,12 @@ jobs:
       - name: Deps
         run: |
           brew update
-          brew install bash fd
+          brew install bash
 
       - name: kmutil help # This is to check for what flags are available
         run: |
           sysctl -n kern.bootobjectspath || true
-          fd kernelcache /
+          find / -name kernelcache || true
           kmutil create --help
           kmutil inspect
 
@@ -48,7 +48,7 @@ jobs:
 
       - name: Build XNU
         run: |
-          MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=T6000 bash build.sh --kc
+          MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=T6000 KC_FILTER='com.apple.driver.SEPHibernation|com.apple.iokit.IOACPIFamily' bash build.sh --kc
           ipsw macho info fakeroot/oss-xnu.kc
 
       - uses: actions/upload-artifact@v3
