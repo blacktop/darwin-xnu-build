@@ -22,7 +22,7 @@ jobs:
 
       - name: kmutil help # This is to check for what flags are available
         run: |
-          sysctl -n kern.bootobjectspath
+          sysctl -n kern.bootobjectspath || true
           kmutil inspect
           kmutil create --help
 
