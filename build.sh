@@ -193,8 +193,7 @@ patches() {
     # xnu build patch
     sed -i '' 's|^LDFLAGS_KERNEL_SDK	= -L$(SDKROOT).*|LDFLAGS_KERNEL_SDK	= -L$(FAKEROOT_DIR)/usr/local/lib/kernel -lfirehose_kernel|g' ${WORK_DIR}/xnu/makedefs/MakeInc.def
     sed -i '' 's|^INCFLAGS_SDK	= -I$(SDKROOT)|INCFLAGS_SDK	= -I$(FAKEROOT_DIR)|g' ${WORK_DIR}/xnu/makedefs/MakeInc.def
-    git apply --directory='xnu' patches/machine_routines.patch || true
-    git apply --directory='xnu' patches/skywalk.patch || true
+    git apply --directory='xnu' patches/*.patch || true
 }
 
 build_dtrace() {
