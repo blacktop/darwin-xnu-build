@@ -95,7 +95,15 @@ install_deps() {
     if [ ! -x "$(command -v jq)" ] || [ ! -x "$(command -v gum)" ] || [ ! -x "$(command -v xcodes)" ]; then
         running "Installing dependencies"
         if [ ! -x "$(command -v brew)" ]; then
-            error "Please install homebrew - https://brew.sh (or install 'jq' and 'gum' manually)"
+            error "Please install homebrew - https://brew.sh (or install 'jq', 'gum' and 'xcodes' manually)"
+            read -p "Install homebrew now? " -n 1 -r
+            echo # (optional) move to a new line
+            if [[ $REPLY =~ ^[Yy]$ ]]; then
+                running "Installing homebrew"
+                /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+            else
+                exit 1
+            fi
         fi
         brew install jq gum xcodes bash
     fi
@@ -195,7 +203,8 @@ patches() {
     # xnu build patch
     sed -i '' 's|^LDFLAGS_KERNEL_SDK	= -L$(SDKROOT).*|LDFLAGS_KERNEL_SDK	= -L$(FAKEROOT_DIR)/usr/local/lib/kernel -lfirehose_kernel|g' ${WORK_DIR}/xnu/makedefs/MakeInc.def
     sed -i '' 's|^INCFLAGS_SDK	= -I$(SDKROOT)|INCFLAGS_SDK	= -I$(FAKEROOT_DIR)|g' ${WORK_DIR}/xnu/makedefs/MakeInc.def
-    if [ "$CODEQL" -eq "0" ]; then # Don't apply patches when building CodeQL database to keep code pure
+    # Don't apply patches when building CodeQL database to keep code pure
+    if [ "$CODEQL" -eq "0" ]; then
         git apply --directory='xnu' patches/*.patch || true
     fi
 }
@@ -361,7 +370,7 @@ build_kc() {
             -r ${KDKROOT}/System/Library/Extensions \
             -r /System/Library/Extensions \
             -r /System/Library/DriverExtensions \
-            -x $(ipsw kernel kmutil inspect -x --filter ${KC_FILTER}) # this will skip SEPHibernation (and other KEXTs with them as dependencies)
+            -x $(ipsw kernel kmutil inspect -x --filter ${KC_FILTER}) # this will skip KC_FILTER regex (and other KEXTs with them as dependencies)
             # -x $(kmutil inspect -V release --no-header | grep apple | grep -v "SEPHibernation" | awk '{print " -b "$1; }')
         echo "  🎉 KC Build Done!"
     fi
