@@ -47,14 +47,14 @@ jobs:
       - name: Build XNU
         run: |
           MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=T6000 KC_FILTER='com.apple.driver.SEPHibernation|com.apple.iokit.IOACPIFamily' bash -x build.sh --kc
-          ipsw macho info fakeroot/oss-xnu.kc
+          ipsw macho info fakeroot/oss-xnu.macOS.${{ matrix.macos-version }}.*.kc
 
       - uses: actions/upload-artifact@v3
         with:
           name: xnu-build-${{ matrix.macos-version }}
           path: |
             fakeroot/System/Library/Kernels/
-            fakeroot/oss-xnu.kc
+            fakeroot/oss-xnu.macOS.${{ matrix.macos-version }}.*.kc
 
       - name: Build XNU CodeQL Database
         run: MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=T6000 bash -x codeql.sh
