@@ -2,7 +2,7 @@
 
 [![XNU CodeQL](https://github.com/blacktop/darwin-xnu-build/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/blacktop/darwin-xnu-build/actions/workflows/c-cpp.yml)
 
-> This repository contains the xnu src as well as scripts to build it as well as generate a KEXT collection and a CodeQL database.
+> This repository contains the xnu src as well as scripts to build it as well as generate a kernel collection and a CodeQL database.
 
 ---
 
@@ -46,10 +46,10 @@ This script builds the macOS XNU kernel
 Where:
     -h|--help       show this help text
     -c|--clean      cleans build artifacts and cloned repos
-    -k|--kc         create Kext Collection (via kmutil create)
+    -k|--kc         create kernel collection (via kmutil create)
 ```    
 
-Build the kernel and KEXT collection
+Build the kernel and kernel Collection
 
 ```bash
 KERNEL_CONFIG=RELEASE ARCH_CONFIG=ARM64 MACHINE_CONFIG=T6000 ./build.sh --kc
@@ -61,7 +61,7 @@ KERNEL_CONFIG=RELEASE ARCH_CONFIG=ARM64 MACHINE_CONFIG=T6000 ./build.sh --kc
 
 ```bash
 <SNIP>
- ⇒ 📦 Building kext collection for 'kernel.release.t6000'
+ ⇒ 📦 Building kernel collection for 'kernel.release.t6000'
    • Decompressing KernelManagement kernelcache
 Merged LINKEDIT:
   weak bindings size:          0KB
@@ -99,7 +99,7 @@ Flags         = None
 <SNIP>
 ```
 
-Clean rebuild the kernel and KEXT collection
+Clean rebuild the kernel and kernel collection
 
 ```bash
 KERNEL_CONFIG=RELEASE ARCH_CONFIG=ARM64 MACHINE_CONFIG=T6000 ./build.sh --clean --kc

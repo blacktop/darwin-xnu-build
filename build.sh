@@ -48,7 +48,8 @@ FAKEROOT_DIR=${WORK_DIR}/fakeroot
 DSTROOT=${FAKEROOT_DIR}
 
 KERNEL_FRAMEWORK_ROOT='/System/Library/Frameworks/Kernel.framework/Versions/A'
-KERNEL_NAME="kernel.$(echo $KERNEL_CONFIG | tr '[:upper:]' '[:lower:]').$(echo $MACHINE_CONFIG | tr '[:upper:]' '[:lower:]')"
+KC_VARIANT=$(echo $KERNEL_CONFIG | tr '[:upper:]' '[:lower:]')
+KERNEL_TYPE="${KC_VARIANT}.$(echo $MACHINE_CONFIG | tr '[:upper:]' '[:lower:]')"
 
 : ${RELEASE_URL:='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-132/release.json'}
 : ${KDKROOT:='/Library/Developer/KDKs/KDK_13.2_22D49.kdk'}
@@ -61,7 +62,7 @@ This script builds the macOS XNU kernel
 Where:
     -h|--help       show this help text
     -c|--clean      cleans build artifacts and cloned repos
-    -k|--kc         create Kext Collection (via kmutil create)
+    -k|--kc         create kernel collection (via kmutil create)
 '
     exit
 }
@@ -308,7 +309,7 @@ build_libdispatch() {
 }
 
 build_xnu() {
-    if [ ! -f "${BUILD_DIR}/xnu.obj/$KERNEL_NAME" ]; then
+    if [ ! -f "${BUILD_DIR}/xnu.obj/kernel.${KERNEL_TYPE}" ]; then
         if [ "$JSONDB" -ne "0" ]; then
             running "📦 Building XNU kernel with JSON compilation database"
             if [ ! -d "${KDKROOT}" ]; then
@@ -342,35 +343,27 @@ build_xnu() {
             cd ${WORK_DIR}
         fi
     else
-        info "📦 XNU $KERNEL_NAME already built"
+        info "📦 XNU kernel.${KERNEL_TYPE} already built"
     fi
 }
 
 build_kc() {
-    if [ -f "${BUILD_DIR}/xnu.obj/$KERNEL_NAME" ]; then
-        running "📦 Building kext collection for $KERNEL_NAME"
-        HOST_VERSION=$(sw_vers -productVersion | grep -Eo '[0-9]+\.[0-9]+')
-        if version_lt ${HOST_VERSION} 13.0; then
-            kmutil create -v -V release -a arm64e -n boot \
-                -B ${DSTROOT}/oss-xnu.kc \
-                -k ${BUILD_DIR}/xnu.obj/$KERNEL_NAME \
-                -r ${KDKROOT}/System/Library/Extensions \
-                -r /System/Library/Extensions \
-                -r /System/Library/DriverExtensions \
-                -x $(ipsw kernel kmutil inspect -x --filter ${KC_FILTER}) # this will skip SEPHibernation (and other KEXTs with them as dependencies)
-            # -x $(kmutil inspect -V release --no-header | grep apple | grep -v "SEPHibernation" | awk '{print " -b "$1; }')
-        else
-            # Newer versions of kmutil support the --kdk option
-            kmutil create -v -V release -a arm64e -n boot \
-                --kdk ${KDKROOT} \
-                -B ${DSTROOT}/oss-xnu.kc \
-                -k ${BUILD_DIR}/xnu.obj/$KERNEL_NAME \
-                -r ${KDKROOT}/System/Library/Extensions \
-                -r /System/Library/Extensions \
-                -r /System/Library/DriverExtensions \
-                -x $(ipsw kernel kmutil inspect -x --filter ${KC_FILTER}) # this will skip SEPHibernation (and other KEXTs with them as dependencies)
-            # -x $(kmutil inspect -V release --no-header | grep apple | grep -v "SEPHibernation" | awk '{print " -b "$1; }')
+    if [ -f "${BUILD_DIR}/xnu.obj/kernel.${KERNEL_TYPE}" ]; then
+        running "📦 Building kernel collection for kernel.${KERNEL_TYPE}"
+        KDK_FLAG=""
+        if version_lt 13.0 $(sw_vers -productVersion | grep -Eo '[0-9]+\.[0-9]+'); then
+            KDK_FLAG="--kdk ${KDKROOT}" # Newer versions of kmutil support the --kdk option
         fi
+        kmutil create -v -V ${KC_VARIANT} -a arm64e -n boot \
+            ${KDK_FLAG} \
+            -B ${DSTROOT}/oss-xnu.macOS.${MACOS_VERSION}.${KERNEL_TYPE}.kc \
+            -k ${BUILD_DIR}/xnu.obj/kernel.${KERNEL_TYPE} \
+            -r ${KDKROOT}/System/Library/Extensions \
+            -r /System/Library/Extensions \
+            -r /System/Library/DriverExtensions \
+            -x $(ipsw kernel kmutil inspect -x --filter ${KC_FILTER}) # this will skip SEPHibernation (and other KEXTs with them as dependencies)
+            # -x $(kmutil inspect -V release --no-header | grep apple | grep -v "SEPHibernation" | awk '{print " -b "$1; }')
+        echo "  🎉 KC Build Done!"
     fi
 }
 
@@ -408,11 +401,11 @@ main() {
     build_libplatform
     build_libdispatch
     build_xnu
+    echo "  🎉 XNU Build Done!"
     if [ "$BUILDKC" -ne "0" ]; then
         install_ipsw
         build_kc
     fi
-    echo "  🎉 XNU Build Done!"
 }
 
 main "$@"
