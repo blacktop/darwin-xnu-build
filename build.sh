@@ -37,6 +37,7 @@ function error() {
 : ${MACHINE_CONFIG:=VMAPPLE}
 : ${MACOS_VERSION:=''}
 : ${JSONDB:=0}
+: ${CODEQL:=0}
 : ${BUILDKC:=0}
 : ${KC_FILTER:='com.apple.driver.SEPHibernation'}
 
@@ -193,7 +194,9 @@ patches() {
     # xnu build patch
     sed -i '' 's|^LDFLAGS_KERNEL_SDK	= -L$(SDKROOT).*|LDFLAGS_KERNEL_SDK	= -L$(FAKEROOT_DIR)/usr/local/lib/kernel -lfirehose_kernel|g' ${WORK_DIR}/xnu/makedefs/MakeInc.def
     sed -i '' 's|^INCFLAGS_SDK	= -I$(SDKROOT)|INCFLAGS_SDK	= -I$(FAKEROOT_DIR)|g' ${WORK_DIR}/xnu/makedefs/MakeInc.def
-    git apply --directory='xnu' patches/*.patch || true
+    if [ "$CODEQL" -eq "0" ]; then # Don't apply patches when building CodeQL database to keep code pure
+        git apply --directory='xnu' patches/*.patch || true
+    fi
 }
 
 build_dtrace() {
