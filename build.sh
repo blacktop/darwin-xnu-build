@@ -46,10 +46,17 @@ CACHE_DIR=${WORK_DIR}/.cache
 BUILD_DIR=${WORK_DIR}/build
 FAKEROOT_DIR=${WORK_DIR}/fakeroot
 DSTROOT=${FAKEROOT_DIR}
+BUILD_ARCH=$(echo $ARCH_CONFIG | tr '[:upper:]' '[:lower:]')
 
 KERNEL_FRAMEWORK_ROOT='/System/Library/Frameworks/Kernel.framework/Versions/A'
 KC_VARIANT=$(echo $KERNEL_CONFIG | tr '[:upper:]' '[:lower:]')
-KERNEL_TYPE="${KC_VARIANT}.$(echo $MACHINE_CONFIG | tr '[:upper:]' '[:lower:]')"
+
+if [ "$BUILD_ARCH" = "x86_64" ]; then
+    KERNEL_TYPE="${KC_VARIANT}"
+    MACHINE_CONFIG="NONE"
+else
+    KERNEL_TYPE="${KC_VARIANT}.$(echo $MACHINE_CONFIG | tr '[:upper:]' '[:lower:]')"
+fi
 
 : ${RELEASE_URL:='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-132/release.json'}
 : ${KDKROOT:='/Library/Developer/KDKs/KDK_13.2_22D49.kdk'}
@@ -220,7 +227,7 @@ build_dtrace() {
         OBJROOT=${BUILD_DIR}/dtrace.obj
         SYMROOT=${BUILD_DIR}/dtrace.sym
         cd ${SRCROOT}
-        xcodebuild install -sdk macosx -target ctfconvert -target ctfdump -target ctfmerge ARCHS="arm64" CODE_SIGN_IDENTITY="-" OBJROOT=${OBJROOT} SYMROOT=${SYMROOT} DSTROOT=${DSTROOT}
+        xcodebuild install -sdk macosx -target ctfconvert -target ctfdump -target ctfmerge ARCHS="${BUILD_ARCH}" CODE_SIGN_IDENTITY="-" OBJROOT=${OBJROOT} SYMROOT=${SYMROOT} DSTROOT=${DSTROOT}
         cd ${WORK_DIR}
     fi
 }
@@ -265,7 +272,11 @@ libsystem_headers() {
         OBJROOT=${BUILD_DIR}/Libsystem.obj
         SYMROOT=${BUILD_DIR}/Libsystem.sym
         cd ${SRCROOT}
-        xcodebuild installhdrs -sdk macosx ARCHS="arm64 arm64e" VALID_ARCHS="arm64 arm64e" OBJROOT=${OBJROOT} SYMROOT=${SYMROOT} DSTROOT=${DSTROOT} FAKEROOT_DIR=${FAKEROOT_DIR}
+        TMP_BUILD_ARCH=${BUILD_ARCH}
+        if [ "$BUILD_ARCH" = "arm64" ]; then
+            TMP_BUILD_ARCH="arm64 arm64e"
+        fi
+        xcodebuild installhdrs -sdk macosx ARCHS="${TMP_BUILD_ARCH}" VALID_ARCHS="${TMP_BUILD_ARCH}" OBJROOT=${OBJROOT} SYMROOT=${SYMROOT} DSTROOT=${DSTROOT} FAKEROOT_DIR=${FAKEROOT_DIR}
         cd ${WORK_DIR}
     fi
 }
@@ -277,7 +288,11 @@ libsyscall_headers() {
         OBJROOT=${BUILD_DIR}/libsyscall.obj
         SYMROOT=${BUILD_DIR}/libsyscall.sym
         cd ${SRCROOT}
-        xcodebuild installhdrs -sdk macosx TARGET_CONFIGS="$KERNEL_CONFIG $ARCH_CONFIG $MACHINE_CONFIG" ARCHS="arm64 arm64e" VALID_ARCHS="arm64 arm64e" OBJROOT=${OBJROOT} SYMROOT=${SYMROOT} DSTROOT=${DSTROOT} FAKEROOT_DIR=${FAKEROOT_DIR}
+        TMP_BUILD_ARCH=${BUILD_ARCH}
+        if [ "$BUILD_ARCH" = "arm64" ]; then
+            TMP_BUILD_ARCH="arm64 arm64e"
+        fi
+        xcodebuild installhdrs -sdk macosx TARGET_CONFIGS="$KERNEL_CONFIG $ARCH_CONFIG $MACHINE_CONFIG" ARCHS="${TMP_BUILD_ARCH}" VALID_ARCHS="${TMP_BUILD_ARCH}" OBJROOT=${OBJROOT} SYMROOT=${SYMROOT} DSTROOT=${DSTROOT} FAKEROOT_DIR=${FAKEROOT_DIR}
         cd ${WORK_DIR}
     fi
 }
@@ -311,7 +326,11 @@ build_libdispatch() {
         sed -i '' 's|$(SDKROOT)/System/Library/Frameworks/Kernel.framework/PrivateHeaders|$(FAKEROOT_DIR)/System/Library/Frameworks/Kernel.framework/PrivateHeaders|g' ${SRCROOT}/xcodeconfig/libfirehose_kernel.xcconfig
         sed -i '' 's|$(SDKROOT)/usr/local/include|$(FAKEROOT_DIR)/usr/local/include|g' ${SRCROOT}/xcodeconfig/libfirehose_kernel.xcconfig
         cd ${SRCROOT}
-        xcodebuild install -target libfirehose_kernel -sdk macosx ARCHS="arm64e" VALID_ARCHS="arm64e" OBJROOT=${OBJROOT} SYMROOT=${SYMROOT} DSTROOT=${DSTROOT} FAKEROOT_DIR=${FAKEROOT_DIR}
+        TMP_BUILD_ARCH=${BUILD_ARCH}
+        if [ "$BUILD_ARCH" = "arm64" ]; then
+            TMP_BUILD_ARCH="arm64e"
+        fi
+        xcodebuild install -target libfirehose_kernel -sdk macosx ARCHS="${TMP_BUILD_ARCH}" VALID_ARCHS="${TMP_BUILD_ARCH}" OBJROOT=${OBJROOT} SYMROOT=${SYMROOT} DSTROOT=${DSTROOT} FAKEROOT_DIR=${FAKEROOT_DIR}
         cd ${WORK_DIR}
         mv ${FAKEROOT_DIR}/usr/local/lib/kernel/liblibfirehose_kernel.a ${FAKEROOT_DIR}/usr/local/lib/kernel/libfirehose_kernel.a
     fi
@@ -363,7 +382,11 @@ build_kc() {
         if version_lte 13.0 $(sw_vers -productVersion | grep -Eo '[0-9]+\.[0-9]+'); then
             KDK_FLAG="--kdk ${KDKROOT}" # Newer versions of kmutil support the --kdk option
         fi
-        kmutil create -v -V ${KC_VARIANT} -a arm64e -n boot \
+        TMP_BUILD_ARCH=${BUILD_ARCH}
+        if [ "$BUILD_ARCH" = "arm64" ]; then
+            TMP_BUILD_ARCH="arm64e"
+        fi
+        kmutil create -v -V ${KC_VARIANT} -a ${TMP_BUILD_ARCH} -n boot \
             ${KDK_FLAG} \
             -B ${DSTROOT}/oss-xnu.macOS.${MACOS_VERSION}.${KERNEL_TYPE}.kc \
             -k ${BUILD_DIR}/xnu.obj/kernel.${KERNEL_TYPE} \

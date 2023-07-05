@@ -58,6 +58,7 @@ KERNEL_CONFIG=RELEASE ARCH_CONFIG=ARM64 MACHINE_CONFIG=T6000 ./build.sh --kc
 > **Note**  
 > Supported `KERNEL_CONFIG` include: `RELEASE` and `DEVELOPMENT`  
 > Supported `MACHINE_CONFIG` include: `T8101`, `T8103`, `T6000` and `VMAPPLE`  
+> Supported `ARCH_CONFIG` include: `ARM`, `X86_64`. if use `X86_64`, DO NOT set the value of the `MACHINE_CONFIG`.
 
 ```bash
 <SNIP>
