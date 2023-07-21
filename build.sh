@@ -130,7 +130,7 @@ install_ipsw() {
 choose_xnu() {
     if [ -z "$MACOS_VERSION"]; then
         gum style --border normal --margin "1" --padding "1 2" --border-foreground 212 "Choose $(gum style --foreground 212 'macOS') version to build:"
-        MACOS_VERSION=$(gum choose "13.0" "13.1" "13.2")
+        MACOS_VERSION=$(gum choose "13.0" "13.1" "13.2" "13.3")
     fi
     case ${MACOS_VERSION} in
     '13.0')
@@ -147,6 +147,11 @@ choose_xnu() {
         RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-132/release.json'
         KDK_NAME='Kernel Debug Kit 13.2 build 22D49'
         KDKROOT='/Library/Developer/KDKs/KDK_13.2_22D49.kdk'
+        ;;
+    '13.3')
+        RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-133/release.json'
+        KDK_NAME='Kernel Debug Kit 13.3 build 22E252'
+        KDKROOT='/Library/Developer/KDKs/KDK_13.3_22E252.kdk'
         ;;
     *)
         error "Invalid xnu version"
