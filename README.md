@@ -22,6 +22,9 @@
 - macOS 13.0
 - macOS 13.1
 - macOS 13.2
+- macOS 13.3
+- macOS 13.4
+- macOS 13.5
 
 ## Why? 🤔
 
@@ -131,8 +134,8 @@ Zips up the CodeQL database
 
 ## TODO
 
-- [x] Auto build xnu with Github Actions
-- [x] Auto generate CodeQL database with Github Actions
+- [x] ~~Auto build xnu with Github Actions~~
+- [x] ~~Auto generate CodeQL database with Github Actions~~
 
 ## NOTES
 

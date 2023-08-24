@@ -51,8 +51,8 @@ KERNEL_FRAMEWORK_ROOT='/System/Library/Frameworks/Kernel.framework/Versions/A'
 KC_VARIANT=$(echo $KERNEL_CONFIG | tr '[:upper:]' '[:lower:]')
 KERNEL_TYPE="${KC_VARIANT}.$(echo $MACHINE_CONFIG | tr '[:upper:]' '[:lower:]')"
 
-: ${RELEASE_URL:='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-132/release.json'}
-: ${KDKROOT:='/Library/Developer/KDKs/KDK_13.2_22D49.kdk'}
+: ${RELEASE_URL:='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-135/release.json'}
+: ${KDKROOT:='/Library/Developer/KDKs/KDK_13.5_22G74.kdk'}
 
 help() {
     echo 'Usage: build.sh [-h] [--clean] [--kc]
@@ -112,7 +112,7 @@ install_deps() {
     else
         running "Installing XCode"
         gum style --border normal --margin "1" --padding "1 2" --border-foreground 212 "Choose $(gum style --foreground 212 'XCode') to install:"
-        XCODE_VERSION=$(gum choose "13.4.1" "14.0.1" "14.1" "14.2" "14.3-beta")
+        XCODE_VERSION=$(gum choose "14.1" "14.2" "14.3.1" "15-beta-7")
         curl -o /tmp/Xcode_${XCODE_VERSION}.xip "https://storage.googleapis.com/xcodes-cache/Xcode_${XCODE_VERSION}.xip"
         xcodes install ${XCODE_VERSION} --experimental-unxip --color --select --path /tmp/Xcode_${XCODE_VERSION}.xip
         # xcodebuild -downloadAllPlatforms
@@ -130,7 +130,7 @@ install_ipsw() {
 choose_xnu() {
     if [ -z "$MACOS_VERSION"]; then
         gum style --border normal --margin "1" --padding "1 2" --border-foreground 212 "Choose $(gum style --foreground 212 'macOS') version to build:"
-        MACOS_VERSION=$(gum choose "13.0" "13.1" "13.2")
+        MACOS_VERSION=$(gum choose "13.0" "13.1" "13.2" "13.3" "13.4" "13.5")
     fi
     case ${MACOS_VERSION} in
     '13.0')
@@ -147,6 +147,21 @@ choose_xnu() {
         RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-132/release.json'
         KDK_NAME='Kernel Debug Kit 13.2 build 22D49'
         KDKROOT='/Library/Developer/KDKs/KDK_13.2_22D49.kdk'
+        ;;
+    '13.3')
+        RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-133/release.json'
+        KDK_NAME='Kernel Debug Kit 13.3 build 22E252'
+        KDKROOT='/Library/Developer/KDKs/KDK_13.3_22E252.kdk'
+        ;;
+    '13.4')
+        RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-134/release.json'
+        KDK_NAME='Kernel Debug Kit 13.4 build 22F66'
+        KDKROOT='/Library/Developer/KDKs/KDK_13.4_22F66.kdk'
+        ;;
+    '13.5')
+        RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-135/release.json'
+        KDK_NAME='Kernel Debug Kit 13.5 build 22G74'
+        KDKROOT='/Library/Developer/KDKs/KDK_13.5_22G74.kdk'
         ;;
     *)
         error "Invalid xnu version"
