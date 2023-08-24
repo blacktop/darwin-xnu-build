@@ -32,6 +32,7 @@ jobs:
           sysctl -n kern.bootobjectspath || true
           sw_vers
           kmutil inspect
+          sudo xcode-select -s /Applications/Xcode_14.3.1.app
 
       - name: Cache JSONDB
         id: cache-jsondb
