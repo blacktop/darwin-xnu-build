@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: macos-13
     strategy:
       matrix:
         macos-version: [ '13.0', '13.1', '13.2', '13.3', '13.4', '13.5' ]
