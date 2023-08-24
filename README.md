@@ -19,12 +19,12 @@
 
 ## Supported OS Versions
 
-- macOS 13.0
-- macOS 13.1
-- macOS 13.2
-- macOS 13.3
-- macOS 13.4
-- macOS 13.5
+- [x] macOS 13.0
+- [x] macOS 13.1
+- [x] macOS 13.2
+- [ ] macOS 13.3
+- [ ] macOS 13.4
+- [ ] macOS 13.5
 
 ## Why? 🤔
 

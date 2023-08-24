@@ -177,6 +177,7 @@ choose_xnu() {
         hdiutil attach /tmp/KDK.dmg
         sudo installer -pkg '/Volumes/Kernel Debug Kit/KernelDebugKit.pkg' -target /
         hdiutil detach '/Volumes/Kernel Debug Kit'
+        ls -lah /Library/Developer/KDKs
     fi
 }
 
