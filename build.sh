@@ -377,7 +377,7 @@ build_kc() {
         running "📦 Building kernel collection for kernel.${KERNEL_TYPE}"
         KDK_FLAG=""
         if version_lte 13.0 $(sw_vers -productVersion | grep -Eo '[0-9]+\.[0-9]+'); then
-            KDK_FLAG="--kdk ${KDKROOT}" # Newer versions of kmutil support the --kdk option
+            KDK_FLAG="--allow-missing-kdk --kdk ${KDKROOT}" # Newer versions of kmutil support the --kdk option
         fi
         kmutil create -v -V ${KC_VARIANT} -a arm64e -n boot \
             ${KDK_FLAG} \
