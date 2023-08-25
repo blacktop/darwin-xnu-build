@@ -25,14 +25,15 @@ jobs:
       - name: Deps
         run: |
           brew update
-          brew install bash
+          brew install bash blacktop/tap/ipsw
+          sudo xcode-select -s /Applications/Xcode_14.3.1.app
+          sudo ipsw dl kdk --host --install          
 
       - name: kmutil help # This is to check for what flags are available
         run: |
           sysctl -n kern.bootobjectspath || true
           sw_vers
           kmutil inspect
-          sudo xcode-select -s /Applications/Xcode_14.3.1.app
 
       - name: Cache JSONDB
         id: cache-jsondb
