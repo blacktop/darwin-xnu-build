@@ -163,6 +163,11 @@ choose_xnu() {
         KDK_NAME='Kernel Debug Kit 13.5 build 22G74'
         KDKROOT='/Library/Developer/KDKs/KDK_13.5_22G74.kdk'
         ;;
+    '14.0')
+        RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-140/release.json'
+        KDK_NAME='Kernel Debug Kit 14.0 build 23A344'
+        KDKROOT='/Library/Developer/KDKs/KDK_14.0_23A344.kdk'
+        ;;
     *)
         error "Invalid xnu version"
         exit 1
