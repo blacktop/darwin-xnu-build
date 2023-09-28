@@ -45,11 +45,11 @@ jobs:
       - name: Build XNU JSON compilation database
         if: steps.cache-jsondb.outputs.cache-hit != 'true'
         run: |
-          MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=T6000 JSONDB=1 bash -x build.sh
+          MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=VMAPPLE JSONDB=1 bash -x build.sh
 
       - name: Build XNU
         run: |
-          MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=T6000 KC_FILTER='com.apple.driver.SEPHibernation|com.apple.iokit.IOACPIFamily' bash -x build.sh --kc
+          MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=VMAPPLE KC_FILTER='com.apple.driver.SEPHibernation|com.apple.iokit.IOACPIFamily' bash -x build.sh --kc
           ipsw macho info fakeroot/oss-xnu.macOS.${{ matrix.macos-version }}.*.kc
 
       - uses: actions/upload-artifact@v3
@@ -60,7 +60,7 @@ jobs:
             fakeroot/oss-xnu.macOS.${{ matrix.macos-version }}.*.kc
 
       - name: Build XNU CodeQL Database
-        run: MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=T6000 bash -x codeql.sh
+        run: MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=VMAPPLE bash -x codeql.sh
 
       - uses: actions/upload-artifact@v3
         with:
