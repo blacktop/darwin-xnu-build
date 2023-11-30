@@ -25,6 +25,8 @@
 - [ ] macOS 13.3
 - [ ] macOS 13.4
 - [ ] macOS 13.5
+- [ ] macOS 14.0
+- [ ] macOS 14.1
 
 ## Why? 🤔
 
