@@ -52,7 +52,7 @@ jobs:
           MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=VMAPPLE KC_FILTER='com.apple.driver.SEPHibernation|com.apple.iokit.IOACPIFamily' bash -x build.sh --kc
           ipsw macho info fakeroot/oss-xnu.macOS.${{ matrix.macos-version }}.*.kc
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: xnu-build-${{ matrix.macos-version }}
           path: |
@@ -62,7 +62,7 @@ jobs:
       - name: Build XNU CodeQL Database
         run: MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=VMAPPLE bash -x codeql.sh
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: xnu-codeql-${{ matrix.macos-version }}
           path: xnu-codeql.zip
