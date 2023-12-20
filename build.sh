@@ -112,7 +112,7 @@ install_deps() {
     else
         running "Installing XCode"
         gum style --border normal --margin "1" --padding "1 2" --border-foreground 212 "Choose $(gum style --foreground 212 'XCode') to install:"
-        XCODE_VERSION=$(gum choose "14.1" "14.2" "14.3.1" "15.0.1")
+        XCODE_VERSION=$(gum choose "14.1" "14.2" "14.3.1" "15.1")
         curl -o /tmp/Xcode_${XCODE_VERSION}.xip "https://storage.googleapis.com/xcodes-cache/Xcode_${XCODE_VERSION}.xip"
         xcodes install ${XCODE_VERSION} --experimental-unxip --color --select --path /tmp/Xcode_${XCODE_VERSION}.xip
         # xcodebuild -downloadAllPlatforms
@@ -172,6 +172,11 @@ choose_xnu() {
         RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-141/release.json'
         KDK_NAME='Kernel Debug Kit 14.1 build 23B74'
         KDKROOT='/Library/Developer/KDKs/KDK_14.1_23B74.kdk'
+        ;;
+    '14.2')
+        RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-142/release.json'
+        KDK_NAME='Kernel Debug Kit 14.2 build 23C64'
+        KDKROOT='/Library/Developer/KDKs/KDK_14.2_23C64.kdk'
         ;;
     *)
         error "Invalid xnu version"
