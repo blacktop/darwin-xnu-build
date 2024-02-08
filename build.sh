@@ -151,36 +151,50 @@ choose_xnu() {
         RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-133/release.json'
         KDK_NAME='Kernel Debug Kit 13.3 build 22E252'
         KDKROOT='/Library/Developer/KDKs/KDK_13.3_22E252.kdk'
+        error "${MACOS_VERSION} is not supported yet"
+        exit 1
         ;;
     '13.4')
         RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-134/release.json'
         KDK_NAME='Kernel Debug Kit 13.4 build 22F66'
         KDKROOT='/Library/Developer/KDKs/KDK_13.4_22F66.kdk'
+        error "${MACOS_VERSION} is not supported yet"
+        exit 1
         ;;
     '13.5')
         RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-135/release.json'
         KDK_NAME='Kernel Debug Kit 13.5 build 22G74'
         KDKROOT='/Library/Developer/KDKs/KDK_13.5_22G74.kdk'
+        error "${MACOS_VERSION} is not supported yet"
+        exit 1
         ;;
     '14.0')
         RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-140/release.json'
         KDK_NAME='Kernel Debug Kit 14.0 build 23A344'
         KDKROOT='/Library/Developer/KDKs/KDK_14.0_23A344.kdk'
+        error "${MACOS_VERSION} is not supported yet"
+        exit 1
         ;;
     '14.1')
         RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-141/release.json'
         KDK_NAME='Kernel Debug Kit 14.1 build 23B74'
         KDKROOT='/Library/Developer/KDKs/KDK_14.1_23B74.kdk'
+        error "${MACOS_VERSION} is not supported yet"
+        exit 1
         ;;
     '14.2')
         RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-142/release.json'
         KDK_NAME='Kernel Debug Kit 14.2 build 23C64'
         KDKROOT='/Library/Developer/KDKs/KDK_14.2_23C64.kdk'
+        error "${MACOS_VERSION} is not supported yet"
+        exit 1
         ;;
     '14.3')
         RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-143/release.json'
         KDK_NAME='Kernel Debug Kit 14.3 build 23D56'
         KDKROOT='/Library/Developer/KDKs/KDK_14.3_23D56.kdk'
+        error "${MACOS_VERSION} is not supported yet"
+        exit 1
         ;;
     *)
         error "Invalid xnu version"
