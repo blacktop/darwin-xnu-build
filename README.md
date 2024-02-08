@@ -28,6 +28,7 @@
 - [ ] macOS 14.0
 - [ ] macOS 14.1
 - [ ] macOS 14.2
+- [ ] macOS 14.3
 
 ## Why? 🤔
 
@@ -53,7 +54,7 @@ Where:
     -h|--help       show this help text
     -c|--clean      cleans build artifacts and cloned repos
     -k|--kc         create kernel collection (via kmutil create)
-```    
+```
 
 Build the kernel and kernel Collection
 
@@ -61,9 +62,9 @@ Build the kernel and kernel Collection
 KERNEL_CONFIG=RELEASE ARCH_CONFIG=ARM64 MACHINE_CONFIG=T6000 ./build.sh --kc
 ```
 
-> **Note**  
-> Supported `KERNEL_CONFIG` include: `RELEASE` and `DEVELOPMENT`  
-> Supported `MACHINE_CONFIG` include: `T8101`, `T8103`, `T6000` and `VMAPPLE`  
+> **Note**
+> Supported `KERNEL_CONFIG` include: `RELEASE` and `DEVELOPMENT`
+> Supported `MACHINE_CONFIG` include: `T8101`, `T8103`, `T6000` and `VMAPPLE`
 
 ```bash
 <SNIP>
@@ -89,19 +90,19 @@ time to optimize LINKEDITs: 2ms
 time to compute slide info: 1ms
 time to compute UUID and codesign cache file: 1ms
   🎉 XNU Build Done!
-```  
+```
 ```bash
 ❯ ipsw macho info build/oss-xnu.kc | head
 Magic         = 64-bit MachO
 Type          = FILESET
-CPU           = AARCH64, ARM64e 
+CPU           = AARCH64, ARM64e
 Commands      = 241 (Size: 17160)
 Flags         = None
 000: LC_UUID                     67DF7148-8EEC-B1A6-5F51-7502DADF2264
 001: LC_BUILD_VERSION            Platform: unknown, SDK: 0.0
 002: LC_UNIXTHREAD               Threads: 1, ARM64 EntryPoint: 0xfffffe0007ad1488
 003: LC_DYLD_CHAINED_FIXUPS      offset=0x003690000  size=0x444
-004: LC_SEGMENT_64 sz=0x00008000 off=0x00000000-0x00008000 addr=0xfffffe0007004000-0xfffffe000700c000 r--/r--   __TEXT  
+004: LC_SEGMENT_64 sz=0x00008000 off=0x00000000-0x00008000 addr=0xfffffe0007004000-0xfffffe000700c000 r--/r--   __TEXT
 <SNIP>
 ```
 
@@ -131,7 +132,7 @@ Successfully created database at darwin-xnu-build/xnu-codeql.
 Zips up the CodeQL database
 
 ```bash
-❯ ll xnu-codeql.zip 
+❯ ll xnu-codeql.zip
 -rw-r--r--@ 1 blacktop  staff   219M Mar  3 22:35 xnu-codeql.zip
 ```
 
