@@ -12,10 +12,10 @@ concurrency:
 
 jobs:
   build:
-    runs-on: macos-13
+    runs-on: macos-14
     strategy:
       matrix:
-        macos-version: [ '13.0', '13.1', '13.2', '13.3' ]
+        macos-version: [ '13.0', '13.1', '13.2', '13.3', '13.4', '13.5', '14.0', '14.1', '14.2', '14.3' ]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,8 +26,8 @@ jobs:
         run: |
           brew update
           brew install bash blacktop/tap/ipsw
-          sudo xcode-select -s /Applications/Xcode_14.3.1.app
-          sudo ipsw dl kdk --host --install          
+          # sudo xcode-select -s /Applications/Xcode_14.3.1.app
+          sudo ipsw dl kdk --host --install
 
       - name: kmutil help # This is to check for what flags are available
         run: |
@@ -49,7 +49,8 @@ jobs:
 
       - name: Build XNU
         run: |
-          MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=VMAPPLE KC_FILTER='com.apple.driver.SEPHibernation|com.apple.iokit.IOACPIFamily' bash -x build.sh --kc
+          # MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=VMAPPLE KC_FILTER='com.apple.driver.SEPHibernation|com.apple.iokit.IOACPIFamily' bash -x build.sh --kc
+          MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=VMAPPLE KC_FILTER='com.apple.driver.SEPHibernation' bash -x build.sh --kc
           ipsw macho info fakeroot/oss-xnu.macOS.${{ matrix.macos-version }}.*.kc
 
       - uses: actions/upload-artifact@v4
