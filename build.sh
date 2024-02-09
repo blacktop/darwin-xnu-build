@@ -47,12 +47,11 @@ BUILD_DIR=${WORK_DIR}/build
 FAKEROOT_DIR=${WORK_DIR}/fakeroot
 DSTROOT=${FAKEROOT_DIR}
 
+HAVE_WE_INSTALLED_HEADERS_YET="${FAKEROOT_DIR}/.xnu_headers_installed"
+
 KERNEL_FRAMEWORK_ROOT='/System/Library/Frameworks/Kernel.framework/Versions/A'
 KC_VARIANT=$(echo $KERNEL_CONFIG | tr '[:upper:]' '[:lower:]')
 KERNEL_TYPE="${KC_VARIANT}.$(echo $MACHINE_CONFIG | tr '[:upper:]' '[:lower:]')"
-
-: ${RELEASE_URL:='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-135/release.json'}
-: ${KDKROOT:='/Library/Developer/KDKs/KDK_13.5_22G74.kdk'}
 
 help() {
     echo 'Usage: build.sh [-h] [--clean] [--kc]
@@ -69,30 +68,34 @@ Where:
 
 clean() {
     running "Cleaning build directories and extra repos..."
+    declare -a paths_to_delete=(
+        "${BUILD_DIR}"
+        "${FAKEROOT_DIR}"
+        "${WORK_DIR}/xnu"
+        "${WORK_DIR}/bootstrap_cmds"
+        "${WORK_DIR}/dtrace"
+        "${WORK_DIR}/AvailabilityVersions"
+        "${WORK_DIR}/Libsystem"
+        "${WORK_DIR}/libplatform"
+        "${WORK_DIR}/libdispatch"
+    )
+
+    for path in "${paths_to_delete[@]}"; do
+        info "Will delete ${path}"
+    done
+
     read -p "Are you sure? " -n 1 -r
     echo # (optional) move to a new line
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        info "deleting ${BUILD_DIR}"
-        rm -rf ${BUILD_DIR}
-        info "deleting ${FAKEROOT_DIR}"
-        rm -rf ${FAKEROOT_DIR}
-        info "deleting ${WORK_DIR}/xnu"
-        rm -rf ${WORK_DIR}/xnu
-        info "deleting ${WORK_DIR}/dtrace"
-        rm -rf ${WORK_DIR}/dtrace
-        info "deleting ${WORK_DIR}/AvailabilityVersions"
-        rm -rf ${WORK_DIR}/AvailabilityVersions
-        info "deleting ${WORK_DIR}/Libsystem"
-        rm -rf ${WORK_DIR}/Libsystem
-        info "deleting ${WORK_DIR}/libplatform"
-        rm -rf ${WORK_DIR}/libplatform
-        info "deleting ${WORK_DIR}/libdispatch"
-        rm -rf ${WORK_DIR}/libdispatch
+        for path in "${paths_to_delete[@]}"; do
+            info "Deleting ${path}"
+            rm -rf "${path}"
+        done
     fi
 }
 
 install_deps() {
-    if [ ! -x "$(command -v jq)" ] || [ ! -x "$(command -v gum)" ] || [ ! -x "$(command -v xcodes)" ]; then
+    if [ ! -x "$(command -v jq)" ] || [ ! -x "$(command -v gum)" ] || [ ! -x "$(command -v xcodes)" ] || [ ! -x "$(command -v cmake)" ] || [ ! -x "$(command -v ninja)" ]; then
         running "Installing dependencies"
         if [ ! -x "$(command -v brew)" ]; then
             error "Please install homebrew - https://brew.sh (or install 'jq', 'gum' and 'xcodes' manually)"
@@ -105,7 +108,7 @@ install_deps() {
                 exit 1
             fi
         fi
-        brew install jq gum xcodes bash
+        brew install jq gum xcodes bash cmake ninja
     fi
     if compgen -G "/Applications/Xcode*.app" >/dev/null; then
         info "Xcode is already installed: $(xcode-select -p)"
@@ -131,70 +134,67 @@ choose_xnu() {
         gum style --border normal --margin "1" --padding "1 2" --border-foreground 212 "Choose $(gum style --foreground 212 'macOS') version to build:"
         MACOS_VERSION=$(gum choose "13.0" "13.1" "13.2" "13.3" "13.4" "13.5" "14.0" "14.1" "14.2" "14.3")
     fi
+    TIGHTBEAMC="tightbeamc-not-supported"
     case ${MACOS_VERSION} in
     '13.0')
         RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-130/release.json'
         KDK_NAME='Kernel Debug Kit 13.0 build 22A380'
         KDKROOT='/Library/Developer/KDKs/KDK_13.0_22A380.kdk'
+        RC_DARWIN_KERNEL_VERSION='22.1.0'
         ;;
     '13.1')
         RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-131/release.json'
         KDK_NAME='Kernel Debug Kit 13.1 build 22C65'
         KDKROOT='/Library/Developer/KDKs/KDK_13.1_22C65.kdk'
+        RC_DARWIN_KERNEL_VERSION='22.2.0'
         ;;
     '13.2')
         RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-132/release.json'
         KDK_NAME='Kernel Debug Kit 13.2 build 22D49'
         KDKROOT='/Library/Developer/KDKs/KDK_13.2_22D49.kdk'
+        RC_DARWIN_KERNEL_VERSION='22.3.0'
         ;;
     '13.3')
         RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-133/release.json'
         KDK_NAME='Kernel Debug Kit 13.3 build 22E252'
         KDKROOT='/Library/Developer/KDKs/KDK_13.3_22E252.kdk'
-        error "${MACOS_VERSION} is not supported yet"
-        exit 1
+        RC_DARWIN_KERNEL_VERSION='22.4.0'
         ;;
     '13.4')
         RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-134/release.json'
         KDK_NAME='Kernel Debug Kit 13.4 build 22F66'
         KDKROOT='/Library/Developer/KDKs/KDK_13.4_22F66.kdk'
-        error "${MACOS_VERSION} is not supported yet"
-        exit 1
+        RC_DARWIN_KERNEL_VERSION='22.5.0'
         ;;
     '13.5')
         RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-135/release.json'
         KDK_NAME='Kernel Debug Kit 13.5 build 22G74'
         KDKROOT='/Library/Developer/KDKs/KDK_13.5_22G74.kdk'
-        error "${MACOS_VERSION} is not supported yet"
-        exit 1
+        RC_DARWIN_KERNEL_VERSION='22.6.0'
         ;;
     '14.0')
         RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-140/release.json'
         KDK_NAME='Kernel Debug Kit 14.0 build 23A344'
         KDKROOT='/Library/Developer/KDKs/KDK_14.0_23A344.kdk'
-        error "${MACOS_VERSION} is not supported yet"
-        exit 1
+        RC_DARWIN_KERNEL_VERSION='23.0.0'
         ;;
     '14.1')
         RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-141/release.json'
         KDK_NAME='Kernel Debug Kit 14.1 build 23B74'
         KDKROOT='/Library/Developer/KDKs/KDK_14.1_23B74.kdk'
-        error "${MACOS_VERSION} is not supported yet"
-        exit 1
+        RC_DARWIN_KERNEL_VERSION='23.1.0'
         ;;
     '14.2')
         RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-142/release.json'
         KDK_NAME='Kernel Debug Kit 14.2 build 23C64'
         KDKROOT='/Library/Developer/KDKs/KDK_14.2_23C64.kdk'
-        error "${MACOS_VERSION} is not supported yet"
-        exit 1
+        RC_DARWIN_KERNEL_VERSION='23.2.0'
         ;;
     '14.3')
         RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-143/release.json'
         KDK_NAME='Kernel Debug Kit 14.3 build 23D56'
         KDKROOT='/Library/Developer/KDKs/KDK_14.3_23D56.kdk'
-        error "${MACOS_VERSION} is not supported yet"
-        exit 1
+        RC_DARWIN_KERNEL_VERSION='23.3.0'
         ;;
     *)
         error "Invalid xnu version"
@@ -252,14 +252,46 @@ patches() {
     # xnu build patch
     sed -i '' 's|^LDFLAGS_KERNEL_SDK	= -L$(SDKROOT).*|LDFLAGS_KERNEL_SDK	= -L$(FAKEROOT_DIR)/usr/local/lib/kernel -lfirehose_kernel|g' ${WORK_DIR}/xnu/makedefs/MakeInc.def
     sed -i '' 's|^INCFLAGS_SDK	= -I$(SDKROOT)|INCFLAGS_SDK	= -I$(FAKEROOT_DIR)|g' ${WORK_DIR}/xnu/makedefs/MakeInc.def
+    # specify location of mig (bootstrap_cmds)
+    sed -i '' 's|export MIG := $(shell $(XCRUN) -sdk $(SDKROOT) -find mig)|export MIG := $(shell find $(FAKEROOT_DIR) -name "mig")|g' "${WORK_DIR}/xnu/makedefs/MakeInc.cmd"
+    sed -i '' 's|export MIGCOM := $(shell $(XCRUN) -sdk $(SDKROOT) -find migcom)|export MIGCOM := $(shell find $(FAKEROOT_DIR) -name "migcom")|g' "${WORK_DIR}/xnu/makedefs/MakeInc.cmd"
     # Don't apply patches when building CodeQL database to keep code pure
     if [ "$CODEQL" -eq "0" ]; then
-        git apply --directory='xnu' patches/*.patch || true
+        cd "${WORK_DIR}/xnu"
+        for PATCH in "${WORK_DIR}/patches"/*.patch; do
+            if git apply --check "$PATCH" 2> /dev/null; then
+                git apply "$PATCH"
+            fi
+        done
+        cd "${WORK_DIR}"
+    fi
+}
+
+build_bootstrap_cmds() {
+    if [ ! $(find "${FAKEROOT_DIR}" -name 'mig' | wc -l ) -gt 0 ]; then
+        running "📦 Building bootstrap_cmds"
+
+        if [ ! -d "${WORK_DIR}/bootstrap_cmds" ]; then
+            BOOTSTRAP_VERSION=$(curl -s $RELEASE_URL | jq -r '.projects[] | select(.project=="bootstrap_cmds") | .tag')
+            git clone --branch ${BOOTSTRAP_VERSION} https://github.com/apple-oss-distributions/bootstrap_cmds.git "${WORK_DIR}/bootstrap_cmds"
+        fi
+
+        SRCROOT="${WORK_DIR}/bootstrap_cmds"
+        OBJROOT="${BUILD_DIR}/bootstrap_cmds.obj"
+        SYMROOT="${BUILD_DIR}/bootstrap_cmds.sym"
+
+        sed -i '' 's|-o root -g wheel||g' "${WORK_DIR}/bootstrap_cmds/xcodescripts/install-mig.sh"
+
+        CLONED_BOOTSTRAP_VERSION=`cd "${WORK_DIR}/bootstrap_cmds"; git describe --always 2>/dev/null`
+
+        cd "${SRCROOT}"
+        xcodebuild install -sdk macosx -project mig.xcodeproj ARCHS="arm64 x86_64" CODE_SIGN_IDENTITY="-" OBJROOT="${OBJROOT}" SYMROOT="${SYMROOT}" DSTROOT="${DSTROOT}" RC_ProjectNameAndSourceVersion="${CLONED_BOOTSTRAP_VERSION}"
+        cd "${WORK_DIR}"
     fi
 }
 
 build_dtrace() {
-    if [ ! -f "${FAKEROOT_DIR}/usr/local/bin/ctfmerge" ]; then
+    if [ ! $(find "${FAKEROOT_DIR}" -name 'ctfmerge' | wc -l ) -gt 0 ]; then
         running "📦 Building dtrace"
         if [ ! -d "${WORK_DIR}/dtrace" ]; then
             DTRACE_VERSION=$(curl -s $RELEASE_URL | jq -r '.projects[] | select(.project=="dtrace") | .tag')
@@ -269,13 +301,13 @@ build_dtrace() {
         OBJROOT=${BUILD_DIR}/dtrace.obj
         SYMROOT=${BUILD_DIR}/dtrace.sym
         cd ${SRCROOT}
-        xcodebuild install -sdk macosx -target ctfconvert -target ctfdump -target ctfmerge ARCHS="arm64" CODE_SIGN_IDENTITY="-" OBJROOT=${OBJROOT} SYMROOT=${SYMROOT} DSTROOT=${DSTROOT}
+        xcodebuild install -sdk macosx -target ctfconvert -target ctfdump -target ctfmerge ARCHS="arm64 x86_64" CODE_SIGN_IDENTITY="-" OBJROOT=${OBJROOT} SYMROOT=${SYMROOT} DSTROOT=${DSTROOT}
         cd ${WORK_DIR}
     fi
 }
 
 build_availabilityversions() {
-    if [ ! -f "${FAKEROOT_DIR}/${KERNEL_FRAMEWORK_ROOT}/Headers/AvailabilityVersions.h" ]; then
+    if [ ! $(find "${FAKEROOT_DIR}" -name 'availability.pl' | wc -l ) -gt 0 ]; then
         running "📦 Building AvailabilityVersions"
         if [ ! -d "${WORK_DIR}/AvailabilityVersions" ]; then
             AVAILABILITYVERSIONS_VERSION=$(curl -s $RELEASE_URL | jq -r '.projects[] | select(.project=="AvailabilityVersions") | .tag')
@@ -291,14 +323,15 @@ build_availabilityversions() {
 }
 
 xnu_headers() {
-    if [ ! -d "${FAKEROOT_DIR}/${KERNEL_FRAMEWORK_ROOT}/PrivateHeaders" ]; then
-        running "Installing xnu headers TARGET_CONFIGS=\"$KERNEL_CONFIG $ARCH_CONFIG $MACHINE_CONFIG\""
+    if [ ! -f "${HAVE_WE_INSTALLED_HEADERS_YET}" ]; then
+        running "Installing xnu headers"
         SRCROOT=${WORK_DIR}/xnu
         OBJROOT=${BUILD_DIR}/xnu-hdrs.obj
         SYMROOT=${BUILD_DIR}/xnu-hdrs.sym
         cd ${SRCROOT}
-        make installhdrs SDKROOT=macosx TARGET_CONFIGS="$KERNEL_CONFIG $ARCH_CONFIG $MACHINE_CONFIG" OBJROOT=${OBJROOT} SYMROOT=${SYMROOT} DSTROOT=${DSTROOT} FAKEROOT_DIR=${FAKEROOT_DIR}
+        make installhdrs SDKROOT=macosx ARCH_CONFIGS="X86_64 ARM64" OBJROOT=${OBJROOT} SYMROOT=${SYMROOT} DSTROOT=${DSTROOT} FAKEROOT_DIR=${FAKEROOT_DIR} KDKROOT=${KDKROOT} TIGHTBEAMC=${TIGHTBEAMC} RC_DARWIN_KERNEL_VERSION=${RC_DARWIN_KERNEL_VERSION}
         cd ${WORK_DIR}
+        touch "${HAVE_WE_INSTALLED_HEADERS_YET}"
     fi
 }
 
@@ -360,7 +393,7 @@ build_libdispatch() {
         sed -i '' 's|$(SDKROOT)/System/Library/Frameworks/Kernel.framework/PrivateHeaders|$(FAKEROOT_DIR)/System/Library/Frameworks/Kernel.framework/PrivateHeaders|g' ${SRCROOT}/xcodeconfig/libfirehose_kernel.xcconfig
         sed -i '' 's|$(SDKROOT)/usr/local/include|$(FAKEROOT_DIR)/usr/local/include|g' ${SRCROOT}/xcodeconfig/libfirehose_kernel.xcconfig
         cd ${SRCROOT}
-        xcodebuild install -target libfirehose_kernel -sdk macosx ARCHS="arm64e" VALID_ARCHS="arm64e" OBJROOT=${OBJROOT} SYMROOT=${SYMROOT} DSTROOT=${DSTROOT} FAKEROOT_DIR=${FAKEROOT_DIR}
+        xcodebuild install -target libfirehose_kernel -sdk macosx ARCHS="x86_64 arm64e" VALID_ARCHS="x86_64 arm64e" OBJROOT=${OBJROOT} SYMROOT=${SYMROOT} DSTROOT=${DSTROOT} FAKEROOT_DIR=${FAKEROOT_DIR}
         cd ${WORK_DIR}
         mv ${FAKEROOT_DIR}/usr/local/lib/kernel/liblibfirehose_kernel.a ${FAKEROOT_DIR}/usr/local/lib/kernel/libfirehose_kernel.a
     fi
@@ -380,7 +413,7 @@ build_xnu() {
             rm -rf ${OBJROOT}
             rm -rf ${SYMROOT}
             cd ${SRCROOT}
-            make SDKROOT=macosx TARGET_CONFIGS="$KERNEL_CONFIG $ARCH_CONFIG $MACHINE_CONFIG" LOGCOLORS=y BUILD_WERROR=0 BUILD_LTO=0 BUILD_JSON_COMPILATION_DATABASE=1 SRCROOT=${SRCROOT} OBJROOT=${OBJROOT} SYMROOT=${SYMROOT} DSTROOT=${DSTROOT} FAKEROOT_DIR=${FAKEROOT_DIR} KDKROOT=${KDKROOT} || true
+            make SDKROOT=macosx TARGET_CONFIGS="$KERNEL_CONFIG $ARCH_CONFIG $MACHINE_CONFIG" LOGCOLORS=y BUILD_WERROR=0 BUILD_LTO=0 BUILD_JSON_COMPILATION_DATABASE=1 SRCROOT=${SRCROOT} OBJROOT=${OBJROOT} SYMROOT=${SYMROOT} DSTROOT=${DSTROOT} FAKEROOT_DIR=${FAKEROOT_DIR} KDKROOT=${KDKROOT} TIGHTBEAMC=${TIGHTBEAMC} RC_DARWIN_KERNEL_VERSION=${RC_DARWIN_KERNEL_VERSION} || true
             JSON_COMPILE_DB=$(find ${OBJROOT} -name compile_commands.json)
             info "JSON compilation database: ${JSON_COMPILE_DB}"
             cp -f ${JSON_COMPILE_DB} ${SRCROOT}
@@ -397,7 +430,7 @@ build_xnu() {
             OBJROOT=${BUILD_DIR}/xnu.obj
             SYMROOT=${BUILD_DIR}/xnu.sym
             cd ${SRCROOT}
-            make install -j8 SDKROOT=macosx TARGET_CONFIGS="$KERNEL_CONFIG $ARCH_CONFIG $MACHINE_CONFIG" CONCISE=1 LOGCOLORS=y BUILD_WERROR=0 BUILD_LTO=0 SRCROOT=${SRCROOT} OBJROOT=${OBJROOT} SYMROOT=${SYMROOT} DSTROOT=${DSTROOT} FAKEROOT_DIR=${FAKEROOT_DIR} KDKROOT=${KDKROOT}
+            make install -j8 SDKROOT=macosx TARGET_CONFIGS="$KERNEL_CONFIG $ARCH_CONFIG $MACHINE_CONFIG" CONCISE=0 LOGCOLORS=y BUILD_WERROR=0 BUILD_LTO=0 SRCROOT=${SRCROOT} OBJROOT=${OBJROOT} SYMROOT=${SYMROOT} DSTROOT=${DSTROOT} FAKEROOT_DIR=${FAKEROOT_DIR} KDKROOT=${KDKROOT} TIGHTBEAMC=${TIGHTBEAMC} RC_DARWIN_KERNEL_VERSION=${RC_DARWIN_KERNEL_VERSION}
             cd ${WORK_DIR}
         fi
     else
@@ -448,6 +481,7 @@ main() {
     get_xnu
     patches
     venv
+    build_bootstrap_cmds
     build_dtrace
     build_availabilityversions
     xnu_headers

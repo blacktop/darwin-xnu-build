@@ -52,6 +52,7 @@ fakeroot
 xnu
 AvailabilityVersions
 dtrace
+bootstrap_cmds
 libdispatch
 libplatform
 Libsystem

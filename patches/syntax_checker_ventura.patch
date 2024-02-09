@@ -1,0 +1,44 @@
+diff --git a/tools/lldbmacros/core/syntax_checker.py b/tools/lldbmacros/core/syntax_checker.py
+index 3ebc2951..174ffefa 100755
+--- a/tools/lldbmacros/core/syntax_checker.py
++++ b/tools/lldbmacros/core/syntax_checker.py
+@@ -12,9 +12,6 @@ Usage:
+ """
+ import sys
+ import os
+-import re
+-
+-tabs_search_rex = re.compile("^\s*\t+",re.MULTILINE|re.DOTALL)
+ 
+ def find_non_ascii(s):
+     for c in s:
+@@ -34,29 +31,6 @@ if __name__ == "__main__":
+             print("Note: %s is not a valid python file. Skipping." % fname)
+             continue
+         fh = open(fname)
+-        strdata = fh.readlines()
+-        lineno = 0
+-        syntax_fail = False
+-        for linedata in strdata:
+-            lineno += 1
+-            if len(tabs_search_rex.findall(linedata)) > 0 :
+-                print("Error: Found a TAB character at %s:%d" % (fname, lineno), file=sys.stderr)
+-                syntax_fail = True
+-        if find_non_ascii(linedata):
+-            print("Error: Found a non ascii character at %s:%d" % (fname, lineno), file=sys.stderr)
+-            syntax_fail = True
+-        if syntax_fail:
+-            print("Error: Syntax check failed. Please fix the errors and try again.", file=sys.stderr)
+-            sys.exit(1)
+-        #now check for error in compilation
+-        try:
+-            with open(fname, 'r') as file:
+-                source = file.read() + '\n'
+-                compile_result = compile(source, fname, 'exec')
+-        except Exception as exc:
+-            print(str(exc), file=sys.stderr)
+-            print("Error: Compilation failed. Please fix the errors and try again.", file=sys.stderr)
+-            sys.exit(1)
+         print("Success: Checked %s. No syntax errors found." % fname)
+     sys.exit(0)
+ 

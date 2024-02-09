@@ -1,0 +1,32 @@
+diff --git a/bsd/sys/kas_info.h b/bsd/sys/kas_info.h
+index ae2d5f3b..4024f745 100644
+--- a/bsd/sys/kas_info.h
++++ b/bsd/sys/kas_info.h
+@@ -44,7 +44,12 @@ __BEGIN_DECLS
+ #define KAS_INFO_KERNEL_TEXT_SLIDE_SELECTOR     (0) /* returns uint64_t */
+ #define KAS_INFO_KERNEL_SEGMENT_VMADDR_SELECTOR (1)
+ 
+-#define KAS_INFO_MAX_SELECTOR                   (2)
++// CoreSymbolication`_createSymbolicatorWithMachKernelExcludingSearchPathsFlagsAndNotification
++// expects kas_info to not return an error for these two segments; required for DTrace to work.
++#define KAS_INFO_KERNEL_SPECIAL_SEGMENT_1       (2)
++#define KAS_INFO_KERNEL_SPECIAL_SEGMENT_2       (3)
++
++#define KAS_INFO_MAX_SELECTOR                   (4)
+ 
+ #ifndef KERNEL
+ 
+diff --git a/bsd/vm/vm_unix.c b/bsd/vm/vm_unix.c
+index 45b6ffe0..3e475918 100644
+--- a/bsd/vm/vm_unix.c
++++ b/bsd/vm/vm_unix.c
+@@ -3732,6 +3732,9 @@ kas_info(struct proc *p,
+ 		}
+ 	}
+ 	break;
++	case KAS_INFO_KERNEL_SPECIAL_SEGMENT_1:
++	case KAS_INFO_KERNEL_SPECIAL_SEGMENT_2:
++	break;
+ 	default:
+ 		return EINVAL;
+ 	}

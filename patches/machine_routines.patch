@@ -1,17 +1,13 @@
 diff --git a/osfmk/arm64/machine_routines.c b/osfmk/arm64/machine_routines.c
-index 11ebb2a..4de43b7 100644
+index 3ed62bd6..f1d0d190 100644
 --- a/osfmk/arm64/machine_routines.c
 +++ b/osfmk/arm64/machine_routines.c
-@@ -1965,9 +1965,9 @@ ml_set_decrementer(uint32_t dec_value)
- static inline uint64_t
+@@ -2097,7 +2097,7 @@ static inline uint64_t
  nonspeculative_timebase(void)
  {
--#if defined(HAS_ACNTVCT)
+ #if defined(HAS_ACNTVCT)
 -	return __builtin_arm_rsr64("ACNTVCT_EL0");
--#elif __ARM_ARCH_8_6__
-+// #if defined(HAS_ACNTVCT)
-+// 	return __builtin_arm_rsr64("ACNTVCT_EL0");
-+#if __ARM_ARCH_8_6__
++	return __builtin_arm_rsr64("S3_4_c15_c10_6");
+ #elif __ARM_ARCH_8_6__
  	return __builtin_arm_rsr64("CNTVCTSS_EL0");
  #else
- 	// ISB required by ARMV7C.b section B8.1.2 & ARMv8 section D6.1.2

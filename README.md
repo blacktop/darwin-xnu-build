@@ -13,22 +13,30 @@
   - [gum](https://github.com/charmbracelet/gum)
   - [xcodes](https://github.com/RobotsAndPencils/xcodes)
   - [ipsw](https://github.com/blacktop/ipsw)
+  - [cmake](https://cmake.org)
+  - [ninja](https://ninja-build.org)
 - XCode
 - python3
 - [codeql CLI](https://codeql.github.com/docs/codeql-cli/)
 
 ## Supported OS Versions
 
+Compile Successfully:
+
 - [x] macOS 13.0
 - [x] macOS 13.1
 - [x] macOS 13.2
-- [ ] macOS 13.3
-- [ ] macOS 13.4
-- [ ] macOS 13.5
-- [ ] macOS 14.0
-- [ ] macOS 14.1
-- [ ] macOS 14.2
-- [ ] macOS 14.3
+- [x] macOS 13.3
+- [x] macOS 13.4
+- [x] macOS 13.5
+- [x] macOS 14.0
+- [x] macOS 14.1
+- [x] macOS 14.2
+- [x] macOS 14.3
+
+Verified Booting to Desktop:
+
+- [x] macOS 14.3 (`arm64/ x86_64`)
 
 ## Why? 🤔
 
