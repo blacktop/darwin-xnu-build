@@ -20,26 +20,26 @@ export COL_MAGENTA=$ESC_SEQ"35;01m"
 export COL_CYAN=$ESC_SEQ"36;01m"
 
 function running() {
-    echo -e "$COL_MAGENTA ⇒ $COL_RESET"$1
+    echo -e "$COL_MAGENTA ⇒ $COL_RESET""$1"
 }
 
 function info() {
-    echo -e "$COL_BLUE[info]$COL_RESET" $1
+    echo -e "$COL_BLUE[info] $COL_RESET""$1"
 }
 
 function error() {
-    echo -e "$COL_RED[error] $COL_RESET"$1
+    echo -e "$COL_RED[error] $COL_RESET""$1"
 }
 
 # Config
-: ${KERNEL_CONFIG:=RELEASE}
-: ${ARCH_CONFIG:=ARM64}
-: ${MACHINE_CONFIG:=VMAPPLE}
-: ${MACOS_VERSION:=''}
-: ${JSONDB:=0}
-: ${CODEQL:=0}
-: ${BUILDKC:=0}
-: ${KC_FILTER:='com.apple.driver.SEPHibernation'}
+: "${KERNEL_CONFIG:=RELEASE}"
+: "${ARCH_CONFIG:=ARM64}"
+: "${MACHINE_CONFIG:=VMAPPLE}"
+: "${MACOS_VERSION:=''}"
+: "${JSONDB:=0}"
+: "${CODEQL:=0}"
+: "${BUILDKC:=0}"
+: "${KC_FILTER:='com.apple.driver.SEPHibernation'}"
 
 WORK_DIR="$PWD"
 CACHE_DIR="${WORK_DIR}/.cache"
@@ -50,8 +50,8 @@ DSTROOT="${FAKEROOT_DIR}"
 HAVE_WE_INSTALLED_HEADERS_YET="${FAKEROOT_DIR}/.xnu_headers_installed"
 
 KERNEL_FRAMEWORK_ROOT='/System/Library/Frameworks/Kernel.framework/Versions/A'
-KC_VARIANT=$(echo $KERNEL_CONFIG | tr '[:upper:]' '[:lower:]')
-KERNEL_TYPE="${KC_VARIANT}.$(echo $MACHINE_CONFIG | tr '[:upper:]' '[:lower:]')"
+KC_VARIANT=$(echo "$KERNEL_CONFIG" | tr '[:upper:]' '[:lower:]')
+KERNEL_TYPE="${KC_VARIANT}.$(echo "$MACHINE_CONFIG" | tr '[:upper:]' '[:lower:]')"
 
 help() {
     echo 'Usage: build.sh [-h] [--clean] [--kc]
@@ -63,7 +63,7 @@ Where:
     -c|--clean      cleans build artifacts and cloned repos
     -k|--kc         create kernel collection (via kmutil create)
 '
-    exit
+    exit 0
 }
 
 clean() {
@@ -116,7 +116,7 @@ install_deps() {
         running "Installing XCode"
         ipsw download dev --more --output /tmp
         XCODE_VERSION=$(ls /tmp/Xcode_*.xip | sed -E 's/.*Xcode_(.*).xip/\1/')
-        xcodes install ${XCODE_VERSION} --experimental-unxip --color --select --path /tmp/Xcode_${XCODE_VERSION}.xip
+        xcodes install "${XCODE_VERSION}" --experimental-unxip --color --select --path "/tmp/Xcode_${XCODE_VERSION}.xip"
         # xcodebuild -downloadAllPlatforms
         xcodebuild -runFirstLaunch
     fi
@@ -130,7 +130,7 @@ install_ipsw() {
 }
 
 choose_xnu() {
-    if [ -z "$MACOS_VERSION"]; then
+    if [ -z "$MACOS_VERSION" ]; then
         gum style --border normal --margin "1" --padding "1 2" --border-foreground 212 "Choose $(gum style --foreground 212 'macOS') version to build:"
         MACOS_VERSION=$(gum choose "13.0" "13.1" "13.2" "13.3" "13.4" "13.5" "14.0" "14.1" "14.2" "14.3")
     fi
@@ -205,7 +205,7 @@ choose_xnu() {
     if [ ! -d "$KDKROOT" ]; then
         KDK_URL=$(curl -s "https://raw.githubusercontent.com/dortania/KdkSupportPkg/gh-pages/manifest.json" | jq -r --arg KDK_NAME "$KDK_NAME" '.[] | select(.name==$KDK_NAME) | .url')
         running "Downloading '$KDK_NAME' to /tmp"
-        curl --progress-bar -L -o /tmp/KDK.dmg ${KDK_URL}
+        curl --progress-bar -L -o /tmp/KDK.dmg "${KDK_URL}"
         running "Installing KDK"
         hdiutil attach /tmp/KDK.dmg
         sudo installer -pkg '/Volumes/Kernel Debug Kit/KernelDebugKit.pkg' -target /
@@ -219,7 +219,7 @@ version_lte() {
 }
 
 version_lt() {
-    [ "$1" = "$2" ] && return 1 || version_lte $1 $2
+    [ "$1" = "$2" ] && return 1 || version_lte "$1" "$2"
 }
 
 venv() {
@@ -235,7 +235,7 @@ get_xnu() {
     if [ ! -d "${WORK_DIR}/xnu" ]; then
         running "⬇️ Cloning xnu"
         XNU_VERSION=$(curl -s $RELEASE_URL | jq -r '.projects[] | select(.project=="xnu") | .tag')
-        git clone --branch ${XNU_VERSION} https://github.com/apple-oss-distributions/xnu.git "${WORK_DIR}/xnu"
+        git clone --branch "${XNU_VERSION}" https://github.com/apple-oss-distributions/xnu.git "${WORK_DIR}/xnu"
     fi
     if [ -f "${CACHE_DIR}/${MACOS_VERSION}/compile_commands.json" ]; then
         info "Restoring cached ${CACHE_DIR}/${MACOS_VERSION}/compile_commands.json"
@@ -268,12 +268,12 @@ patches() {
 }
 
 build_bootstrap_cmds() {
-    if [ ! $(find "${FAKEROOT_DIR}" -name 'mig' | wc -l ) -gt 0 ]; then
+    if [ ! "$(find "${FAKEROOT_DIR}" -name 'mig' | wc -l )" -gt 0 ]; then
         running "📦 Building bootstrap_cmds"
 
         if [ ! -d "${WORK_DIR}/bootstrap_cmds" ]; then
             BOOTSTRAP_VERSION=$(curl -s $RELEASE_URL | jq -r '.projects[] | select(.project=="bootstrap_cmds") | .tag')
-            git clone --branch ${BOOTSTRAP_VERSION} https://github.com/apple-oss-distributions/bootstrap_cmds.git "${WORK_DIR}/bootstrap_cmds"
+            git clone --branch "${BOOTSTRAP_VERSION}" https://github.com/apple-oss-distributions/bootstrap_cmds.git "${WORK_DIR}/bootstrap_cmds"
         fi
 
         SRCROOT="${WORK_DIR}/bootstrap_cmds"
@@ -282,7 +282,7 @@ build_bootstrap_cmds() {
 
         sed -i '' 's|-o root -g wheel||g' "${WORK_DIR}/bootstrap_cmds/xcodescripts/install-mig.sh"
 
-        CLONED_BOOTSTRAP_VERSION=`cd "${WORK_DIR}/bootstrap_cmds"; git describe --always 2>/dev/null`
+        CLONED_BOOTSTRAP_VERSION=$(cd "${WORK_DIR}/bootstrap_cmds"; git describe --always 2>/dev/null)
 
         cd "${SRCROOT}"
         xcodebuild install -sdk macosx -project mig.xcodeproj ARCHS="arm64 x86_64" CODE_SIGN_IDENTITY="-" OBJROOT="${OBJROOT}" SYMROOT="${SYMROOT}" DSTROOT="${DSTROOT}" RC_ProjectNameAndSourceVersion="${CLONED_BOOTSTRAP_VERSION}"
@@ -291,11 +291,11 @@ build_bootstrap_cmds() {
 }
 
 build_dtrace() {
-    if [ ! $(find "${FAKEROOT_DIR}" -name 'ctfmerge' | wc -l ) -gt 0 ]; then
+    if [ ! "$(find "${FAKEROOT_DIR}" -name 'ctfmerge' | wc -l )" -gt 0 ]; then
         running "📦 Building dtrace"
         if [ ! -d "${WORK_DIR}/dtrace" ]; then
             DTRACE_VERSION=$(curl -s $RELEASE_URL | jq -r '.projects[] | select(.project=="dtrace") | .tag')
-            git clone --branch ${DTRACE_VERSION} https://github.com/apple-oss-distributions/dtrace.git "${WORK_DIR}/dtrace"
+            git clone --branch "${DTRACE_VERSION}" https://github.com/apple-oss-distributions/dtrace.git "${WORK_DIR}/dtrace"
         fi
         SRCROOT="${WORK_DIR}/dtrace"
         OBJROOT="${BUILD_DIR}/dtrace.obj"
@@ -307,11 +307,11 @@ build_dtrace() {
 }
 
 build_availabilityversions() {
-    if [ ! $(find "${FAKEROOT_DIR}" -name 'availability.pl' | wc -l ) -gt 0 ]; then
+    if [ ! "$(find "${FAKEROOT_DIR}" -name 'availability.pl' | wc -l )" -gt 0 ]; then
         running "📦 Building AvailabilityVersions"
         if [ ! -d "${WORK_DIR}/AvailabilityVersions" ]; then
             AVAILABILITYVERSIONS_VERSION=$(curl -s $RELEASE_URL | jq -r '.projects[] | select(.project=="AvailabilityVersions") | .tag')
-            git clone --branch ${AVAILABILITYVERSIONS_VERSION} https://github.com/apple-oss-distributions/AvailabilityVersions.git "${WORK_DIR}/AvailabilityVersions"
+            git clone --branch "${AVAILABILITYVERSIONS_VERSION}" https://github.com/apple-oss-distributions/AvailabilityVersions.git "${WORK_DIR}/AvailabilityVersions"
         fi
         SRCROOT="${WORK_DIR}/AvailabilityVersions"
         OBJROOT="${BUILD_DIR}/"
@@ -340,7 +340,7 @@ libsystem_headers() {
         running "Installing Libsystem headers"
         if [ ! -d "${WORK_DIR}/Libsystem" ]; then
             LIBSYSTEM_VERSION=$(curl -s $RELEASE_URL | jq -r '.projects[] | select(.project=="Libsystem") | .tag')
-            git clone --branch ${LIBSYSTEM_VERSION} https://github.com/apple-oss-distributions/Libsystem.git "${WORK_DIR}/Libsystem"
+            git clone --branch "${LIBSYSTEM_VERSION}" https://github.com/apple-oss-distributions/Libsystem.git "${WORK_DIR}/Libsystem"
         fi
         sed -i '' 's|^#include.*BSD.xcconfig.*||g' "${WORK_DIR}/Libsystem/Libsystem.xcconfig"
         SRCROOT="${WORK_DIR}/Libsystem"
@@ -369,7 +369,7 @@ build_libplatform() {
         running "📦 Building libplatform"
         if [ ! -d "${WORK_DIR}/libplatform" ]; then
             LIBPLATFORM_VERSION=$(curl -s $RELEASE_URL | jq -r '.projects[] | select(.project=="libplatform") | .tag')
-            git clone --branch ${LIBPLATFORM_VERSION} https://github.com/apple-oss-distributions/libplatform.git "${WORK_DIR}/libplatform"
+            git clone --branch "${LIBPLATFORM_VERSION}" https://github.com/apple-oss-distributions/libplatform.git "${WORK_DIR}/libplatform"
         fi
         SRCROOT="${WORK_DIR}/libplatform"
         cd "${SRCROOT}"
@@ -384,7 +384,7 @@ build_libdispatch() {
         running "📦 Building libdispatch"
         if [ ! -d "${WORK_DIR}/libdispatch" ]; then
             LIBDISPATCH_VERSION=$(curl -s $RELEASE_URL | jq -r '.projects[] | select(.project=="libdispatch") | .tag')
-            git clone --branch ${LIBDISPATCH_VERSION} https://github.com/apple-oss-distributions/libdispatch.git "${WORK_DIR}/libdispatch"
+            git clone --branch "${LIBDISPATCH_VERSION}" https://github.com/apple-oss-distributions/libdispatch.git "${WORK_DIR}/libdispatch"
         fi
         SRCROOT="${WORK_DIR}/libdispatch"
         OBJROOT="${BUILD_DIR}/libfirehose_kernel.obj"
@@ -414,7 +414,7 @@ build_xnu() {
             rm -rf "${SYMROOT}"
             cd "${SRCROOT}"
             make SDKROOT=macosx TARGET_CONFIGS="$KERNEL_CONFIG $ARCH_CONFIG $MACHINE_CONFIG" LOGCOLORS=y BUILD_WERROR=0 BUILD_LTO=0 BUILD_JSON_COMPILATION_DATABASE=1 SRCROOT="${SRCROOT}" OBJROOT="${OBJROOT}" SYMROOT="${SYMROOT}" DSTROOT="${DSTROOT}" FAKEROOT_DIR="${FAKEROOT_DIR}" KDKROOT="${KDKROOT}" TIGHTBEAMC=${TIGHTBEAMC} RC_DARWIN_KERNEL_VERSION=${RC_DARWIN_KERNEL_VERSION} || true
-            JSON_COMPILE_DB="$(find ${OBJROOT} -name compile_commands.json)"
+            JSON_COMPILE_DB="$(find "${OBJROOT}" -name compile_commands.json)"
             info "JSON compilation database: ${JSON_COMPILE_DB}"
             cp -f "${JSON_COMPILE_DB}" "${SRCROOT}"
             mkdir -p "${CACHE_DIR}/${MACOS_VERSION}"
@@ -442,24 +442,24 @@ build_kc() {
     if [ -f "${BUILD_DIR}/xnu.obj/kernel.${KERNEL_TYPE}" ]; then
         running "📦 Building kernel collection for kernel.${KERNEL_TYPE}"
         KDK_FLAG=""
-        if version_lte 13.0 $(sw_vers -productVersion | grep -Eo '[0-9]+\.[0-9]+'); then
+        if version_lte 13.0 "$(sw_vers -productVersion | grep -Eo '[0-9]+\.[0-9]+')"; then
             KDK_FLAG="--kdk ${KDKROOT}" # Newer versions of kmutil support the --kdk option
         fi
         if [ "$ARCH_CONFIG" == "ARM64" ]; then
-            kmutil create -v -V ${KC_VARIANT} -a arm64e -n boot -s none \
-                ${KDK_FLAG} \
-                -B "${DSTROOT}/oss-xnu.macOS.${MACOS_VERSION}.kc.$(echo $MACHINE_CONFIG | tr '[:upper:]' '[:lower:]')" \
+            kmutil create -v -V "${KC_VARIANT}" -a arm64e -n boot -s none \
+                "${KDK_FLAG}" \
+                -B "${DSTROOT}/oss-xnu.macOS.${MACOS_VERSION}.kc.$(echo "$MACHINE_CONFIG" | tr '[:upper:]' '[:lower:]')" \
                 -k "${BUILD_DIR}/xnu.obj/kernel.${KERNEL_TYPE}" \
-                -x $(ipsw kernel kmutil inspect -x --filter ${KC_FILTER}) # this will skip KC_FILTER regex (and other KEXTs with them as dependencies)
+                -x "$(ipsw kernel kmutil inspect -x --filter "${KC_FILTER}")" # this will skip KC_FILTER regex (and other KEXTs with them as dependencies)
                 # -x $(kmutil inspect -V release --no-header | grep apple | grep -v "SEPHibernation" | awk '{print " -b "$1; }')
         else
-            kmutil create -v -V ${KC_VARIANT} -a x86_64 -n boot sys -s none \
-                ${KDK_FLAG} \
-                -B "${DSTROOT}/BootKernelExtensions.${MACOS_VERSION}.$(echo $MACHINE_CONFIG | tr '[:upper:]' '[:lower:]').kc" \
-                -S "${DSTROOT}/SystemKernelExtensions.${MACOS_VERSION}.$(echo $MACHINE_CONFIG | tr '[:upper:]' '[:lower:]').kc" \
+            kmutil create -v -V "${KC_VARIANT}" -a x86_64 -n boot sys -s none \
+                "${KDK_FLAG}" \
+                -B "${DSTROOT}/BootKernelExtensions.${MACOS_VERSION}.$(echo "$MACHINE_CONFIG" | tr '[:upper:]' '[:lower:]').kc" \
+                -S "${DSTROOT}/SystemKernelExtensions.${MACOS_VERSION}.$(echo "$MACHINE_CONFIG" | tr '[:upper:]' '[:lower:]').kc" \
                 -k "${BUILD_DIR}/xnu.obj/kernel.${KERNEL_TYPE}" \
                 --elide-identifier com.apple.ExclaveKextClient \
-                -x $(ipsw kernel kmutil inspect -x --filter ${KC_FILTER}) # this will skip KC_FILTER regex (and other KEXTs with them as dependencies)
+                -x "$(ipsw kernel kmutil inspect -x --filter "${KC_FILTER}")" # this will skip KC_FILTER regex (and other KEXTs with them as dependencies)
                 # -x $(kmutil inspect -V release --no-header | grep apple | grep -v "SEPHibernation" | awk '{print " -b "$1; }')
         fi
         echo "  🎉 KC Build Done!"
@@ -472,7 +472,6 @@ main() {
         case "$1" in
         -h | --help)
             help
-            exit 0
             ;;
         -c | --clean)
             clean
