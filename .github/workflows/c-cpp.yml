@@ -37,7 +37,7 @@ jobs:
 
       - name: Cache JSONDB
         id: cache-jsondb
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: .cache/${{ matrix.macos-version }}/compile_commands.json
           key: ${{ matrix.macos-version }}-jsondb
