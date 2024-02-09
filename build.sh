@@ -447,19 +447,19 @@ build_kc() {
         fi
         if [ "$ARCH_CONFIG" == "ARM64" ]; then
             kmutil create -v -V "${KC_VARIANT}" -a arm64e -n boot -s none \
-                "${KDK_FLAG}" \
+                ${KDK_FLAG} \
                 -B "${DSTROOT}/oss-xnu.macOS.${MACOS_VERSION}.kc.$(echo "$MACHINE_CONFIG" | tr '[:upper:]' '[:lower:]')" \
                 -k "${BUILD_DIR}/xnu.obj/kernel.${KERNEL_TYPE}" \
-                -x "$(ipsw kernel kmutil inspect -x --filter "${KC_FILTER}")" # this will skip KC_FILTER regex (and other KEXTs with them as dependencies)
+                -x $(ipsw kernel kmutil inspect -x --filter "${KC_FILTER}") # this will skip KC_FILTER regex (and other KEXTs with them as dependencies)
                 # -x $(kmutil inspect -V release --no-header | grep apple | grep -v "SEPHibernation" | awk '{print " -b "$1; }')
         else
             kmutil create -v -V "${KC_VARIANT}" -a x86_64 -n boot sys -s none \
-                "${KDK_FLAG}" \
+                ${KDK_FLAG} \
                 -B "${DSTROOT}/BootKernelExtensions.${MACOS_VERSION}.$(echo "$MACHINE_CONFIG" | tr '[:upper:]' '[:lower:]').kc" \
                 -S "${DSTROOT}/SystemKernelExtensions.${MACOS_VERSION}.$(echo "$MACHINE_CONFIG" | tr '[:upper:]' '[:lower:]').kc" \
                 -k "${BUILD_DIR}/xnu.obj/kernel.${KERNEL_TYPE}" \
                 --elide-identifier com.apple.ExclaveKextClient \
-                -x "$(ipsw kernel kmutil inspect -x --filter "${KC_FILTER}")" # this will skip KC_FILTER regex (and other KEXTs with them as dependencies)
+                -x $(ipsw kernel kmutil inspect -x --filter "${KC_FILTER}") # this will skip KC_FILTER regex (and other KEXTs with them as dependencies)
                 # -x $(kmutil inspect -V release --no-header | grep apple | grep -v "SEPHibernation" | awk '{print " -b "$1; }')
         fi
         echo "  🎉 KC Build Done!"
