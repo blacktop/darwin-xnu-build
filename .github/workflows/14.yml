@@ -17,7 +17,7 @@ jobs:
       matrix:
         include:
           -  macos-version: "14.0"
-             xcode-version: "14.3.1"
+             xcode-version: "15.0.1"
           -  macos-version: "14.1"
              xcode-version: "15.0.1"
           -  macos-version: "14.2"
