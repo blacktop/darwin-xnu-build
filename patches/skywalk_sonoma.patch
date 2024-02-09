@@ -1,0 +1,100 @@
+diff --git a/bsd/net/skywalk_stubs.c b/bsd/net/skywalk_stubs.c
+index 611f39c6..beff6424 100644
+--- a/bsd/net/skywalk_stubs.c
++++ b/bsd/net/skywalk_stubs.c
+@@ -135,6 +135,9 @@ STUB(kern_packet_get_transport_last_packet);
+ STUB(kern_packet_get_transport_traffic_background)
+ STUB(kern_packet_get_transport_traffic_realtime)
+ STUB(kern_packet_set_compression_generation_count);
++STUB(kern_packet_set_fpd_command);
++STUB(kern_packet_set_fpd_context_id);
++STUB(kern_packet_set_fpd_sequence_number);
+ STUB(kern_packet_set_flow_uuid);
+ STUB(kern_packet_set_inet_checksum);
+ STUB(kern_packet_set_headroom);
+diff --git a/bsd/skywalk/packet/os_packet.h b/bsd/skywalk/packet/os_packet.h
+index 18b582ba..5d4a1500 100644
+--- a/bsd/skywalk/packet/os_packet.h
++++ b/bsd/skywalk/packet/os_packet.h
+@@ -883,6 +883,13 @@ extern errno_t kern_pbufpool_alloc_buflet_nosleep(const kern_pbufpool_t,
+     kern_buflet_t *);
+ extern void kern_pbufpool_destroy(kern_pbufpool_t);
+ extern kern_segment_idx_t kern_segment_get_index(const kern_segment_t);
++
++/*
++ * FPD.
++ */
++extern errno_t kern_packet_set_fpd_command(const kern_packet_t, uint8_t);
++extern errno_t kern_packet_set_fpd_context_id(const kern_packet_t, uint16_t);
++extern errno_t kern_packet_set_fpd_sequence_number(const kern_packet_t, uint32_t);
+ __END_DECLS
+ #endif /* KERNEL */
+ #endif /* PRIVATE */
+diff --git a/bsd/skywalk/packet/packet_kern.c b/bsd/skywalk/packet/packet_kern.c
+index 1e822d15..08f4109a 100644
+--- a/bsd/skywalk/packet/packet_kern.c
++++ b/bsd/skywalk/packet/packet_kern.c
+@@ -287,6 +287,36 @@ kern_packet_get_inet_checksum(const kern_packet_t ph, uint16_t *start,
+ 	return __packet_get_inet_checksum(ph, start, val, tx);
+ }
+ 
++errno_t
++kern_packet_set_fpd_command(const kern_packet_t ph,
++							uint8_t cmd)
++{
++	errno_t result;
++
++	if (cmd > 7)
++		return 22;
++	result = 0;
++	PKT_ADDR(ph)->pkt_fpd_metadata |= ((cmd & 7) << 6) | 0x8000;
++	return result;
++}
++
++errno_t
++kern_packet_set_fpd_sequence_number(const kern_packet_t ph,
++									uint32_t seq_num)
++{
++	PKT_ADDR(ph)->pkt_fpd_seqnum = seq_num;
++	PKT_ADDR(ph)->pkt_fpd_metadata |= 0x8000;
++	return 0;
++}
++
++errno_t
++kern_packet_set_fpd_context_id(const kern_packet_t ph,
++							   uint16_t ctx_id)
++{
++	PKT_ADDR(ph)->pkt_fpd_metadata |= ctx_id & 0x3F | 0x8000;
++	return 0;
++}
++
+ void
+ kern_packet_set_flow_uuid(const kern_packet_t ph, const uuid_t flow_uuid)
+ {
+diff --git a/bsd/skywalk/packet/packet_var.h b/bsd/skywalk/packet/packet_var.h
+index 6c328f83..bf8371c1 100644
+--- a/bsd/skywalk/packet/packet_var.h
++++ b/bsd/skywalk/packet/packet_var.h
+@@ -441,6 +441,8 @@ struct __kern_packet {
+ 
+ 	void *      pkt_priv;   /* free to use for every layer */
+ 
++	uint32_t               pkt_fpd_seqnum;   // @ 0xd0
++	uint16_t               pkt_fpd_metadata; // @ 0xd4
+ 
+ 	/*
+ 	 * Kernel specific.
+diff --git a/config/Private.exports b/config/Private.exports
+index 6977f083..eb4bbb4b 100644
+--- a/config/Private.exports
++++ b/config/Private.exports
+@@ -634,6 +634,9 @@ _kern_packet_set_wake_flag
+ _kern_packet_set_compression_generation_count
+ _kern_packet_set_expire_time
+ _kern_packet_set_expiry_action
++_kern_packet_set_fpd_command
++_kern_packet_set_fpd_context_id
++_kern_packet_set_fpd_sequence_number
+ _kern_packet_set_flow_uuid
+ _kern_packet_set_group_start
+ _kern_packet_set_group_end
