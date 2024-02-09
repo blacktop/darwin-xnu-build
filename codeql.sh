@@ -30,17 +30,17 @@ export COL_MAGENTA=$ESC_SEQ"35;01m"
 export COL_CYAN=$ESC_SEQ"36;01m"
 
 function running() {
-    echo -e "$COL_MAGENTA ⇒ $COL_RESET"$1
+    echo -e "$COL_MAGENTA ⇒ $COL_RESET""$1"
 }
 
 function info() {
-    echo -e "$COL_BLUE[info]$COL_RESET" $1
+    echo -e "$COL_BLUE[info] $COL_RESET""$1"
 }
 
-: ${KERNEL_CONFIG:=RELEASE}
-: ${ARCH_CONFIG:=ARM64}
-: ${MACHINE_CONFIG:=VMAPPLE}
-: ${XNU_VERSION:=''}
+: "${KERNEL_CONFIG:=RELEASE}"
+: "${ARCH_CONFIG:=ARM64}"
+: "${MACHINE_CONFIG:=VMAPPLE}"
+: "${XNU_VERSION:=''}"
 
 function install_codeql() {
     if ! [ -x "$(command -v codeql)" ]; then
@@ -54,13 +54,13 @@ function create_db() {
     BUILD_DIR=${WORK_DIR}/build
     FAKEROOT_DIR=${WORK_DIR}/fakeroot
     DATABASE_DIR=${WORK_DIR}/xnu-codeql
-    rm -rf ${BUILD_DIR}
-    rm -rf ${FAKEROOT_DIR}
-    rm -rf ${DATABASE_DIR}
+    rm -rf "${BUILD_DIR}"
+    rm -rf "${FAKEROOT_DIR}"
+    rm -rf "${DATABASE_DIR}"
     running "📦 Creating the CodeQL database..."
-    XNU_VERSION=${XNU_VERSION} KERNEL_CONFIG=${KERNEL_CONFIG} ARCH_CONFIG=${ARCH_CONFIG} MACHINE_CONFIG=${MACHINE_CONFIG} CODEQL=1 codeql database create ${DATABASE_DIR} --language=cpp -v --command=${WORK_DIR}/build.sh --source-root=${WORK_DIR}
+    XNU_VERSION=${XNU_VERSION} KERNEL_CONFIG=${KERNEL_CONFIG} ARCH_CONFIG=${ARCH_CONFIG} MACHINE_CONFIG=${MACHINE_CONFIG} CODEQL=1 codeql database create "${DATABASE_DIR}" --language=cpp -v --command="${WORK_DIR}"/build.sh --source-root="${WORK_DIR}"
     info "Deleting log files..."
-    rm -rf ${DATABASE_DIR}/log
+    rm -rf "${DATABASE_DIR}"/log
     info "Zipping the CodeQL database..."
     zip -r -X xnu-codeql.zip xnu-codeql/*
 }
