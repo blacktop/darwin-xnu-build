@@ -34,17 +34,17 @@ jobs:
           sw_vers
           kmutil inspect
 
-      - name: Cache JSONDB
-        id: cache-jsondb
-        uses: actions/cache@v4
-        with:
-          path: .cache/${{ matrix.macos-version }}/compile_commands.json
-          key: ${{ matrix.macos-version }}-jsondb
+      # - name: Cache JSONDB
+      #   id: cache-jsondb
+      #   uses: actions/cache@v4
+      #   with:
+      #     path: .cache/${{ matrix.macos-version }}/compile_commands.json
+      #     key: ${{ matrix.macos-version }}-jsondb
 
-      - name: Build XNU JSON compilation database
-        if: steps.cache-jsondb.outputs.cache-hit != 'true'
-        run: |
-          MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=VMAPPLE JSONDB=1 bash -x build.sh
+      # - name: Build XNU JSON compilation database
+      #   if: steps.cache-jsondb.outputs.cache-hit != 'true'
+      #   run: |
+      #     MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=VMAPPLE JSONDB=1 bash -x build.sh
 
       - name: Build XNU
         run: |
