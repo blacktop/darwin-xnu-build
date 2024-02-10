@@ -38,6 +38,19 @@ Verified Booting to Desktop:
 
 - [x] macOS 14.3 (`arm64/ x86_64`)
 
+## Prebuilt CodeQL Databases
+
+- [macOS 13.0](https://github.com/blacktop/darwin-xnu-build/releases/download/v13.0/xnu-codeql.zip)
+- [macOS 13.1](https://github.com/blacktop/darwin-xnu-build/releases/download/v13.1/xnu-codeql.zip)
+- [macOS 13.2](https://github.com/blacktop/darwin-xnu-build/releases/download/v13.2/xnu-codeql.zip)
+- [macOS 13.3](https://github.com/blacktop/darwin-xnu-build/releases/download/v13.3/xnu-codeql.zip)
+- [macOS 13.4](https://github.com/blacktop/darwin-xnu-build/releases/download/v13.4/xnu-codeql.zip)
+- [macOS 13.5](https://github.com/blacktop/darwin-xnu-build/releases/download/v13.5/xnu-codeql.zip)
+- [macOS 14.0](https://github.com/blacktop/darwin-xnu-build/releases/download/v14.0/xnu-codeql.zip)
+- [macOS 14.1](https://github.com/blacktop/darwin-xnu-build/releases/download/v14.1/xnu-codeql.zip)
+- [macOS 14.2](https://github.com/blacktop/darwin-xnu-build/releases/download/v14.2/xnu-codeql.zip)
+- [macOS 14.3](https://github.com/blacktop/darwin-xnu-build/releases/download/v14.3/xnu-codeql.zip)
+
 ## Why? 🤔
 
 I'm hoping to patch and build the xnu source in interesting ways to aid in research and development of macOS/iOS security research tools as well as generate [CodeQL](https://securitylab.github.com/tools/codeql) databases for the community to use.
