@@ -37,6 +37,7 @@ function error() {
 : ${MACHINE_CONFIG:=VMAPPLE}
 : ${MACOS_VERSION:=""}
 : ${JSONDB:=0}
+: ${BUILDKC:=0}
 : ${CODEQL:=0}
 : ${KC_FILTER:='com.apple.driver.SEPHibernation'}
 
@@ -477,7 +478,7 @@ main() {
             shift
             ;;
         -k | --kc)
-            export BUILDKC=1
+            BUILDKC=1
             shift
             ;;
         *)

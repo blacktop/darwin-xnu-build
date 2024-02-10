@@ -26,8 +26,8 @@ jobs:
         run: |
           brew update
           brew install bash blacktop/tap/ipsw
-          # sudo xcode-select -s /Applications/Xcode_14.3.1.app
           sudo ipsw dl kdk --host --install
+          sudo xcode-select -s /Applications/Xcode_15.2.app
 
       - name: kmutil help # This is to check for what flags are available
         run: |
@@ -35,17 +35,17 @@ jobs:
           sw_vers
           kmutil inspect
 
-      - name: Cache JSONDB
-        id: cache-jsondb
-        uses: actions/cache@v4
-        with:
-          path: .cache/${{ matrix.macos-version }}/compile_commands.json
-          key: ${{ matrix.macos-version }}-jsondb
+      # - name: Cache JSONDB
+      #   id: cache-jsondb
+      #   uses: actions/cache@v4
+      #   with:
+      #     path: .cache/${{ matrix.macos-version }}/compile_commands.json
+      #     key: ${{ matrix.macos-version }}-jsondb
 
-      - name: Build XNU JSON compilation database
-        if: steps.cache-jsondb.outputs.cache-hit != 'true'
-        run: |
-          MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=VMAPPLE JSONDB=1 bash -x build.sh
+      # - name: Build XNU JSON compilation database
+      #   if: steps.cache-jsondb.outputs.cache-hit != 'true'
+      #   run: |
+      #     MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=VMAPPLE JSONDB=1 bash -x build.sh
 
       - name: Build XNU
         run: |
@@ -66,3 +66,13 @@ jobs:
         with:
           name: xnu-codeql-${{ matrix.macos-version }}
           path: xnu-codeql.zip
+
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls -lah
+          gh release upload v${{ matrix.macos-version }} --clobber fakeroot/System/Library/Kernels/kernel.release.vmapple
+          gh release upload v${{ matrix.macos-version }} --clobber kernel.release.vmapple.sha256
+          gh release upload v${{ matrix.macos-version }} --clobber xnu-codeql.zip
+          gh release upload v${{ matrix.macos-version }} --clobber xnu-codeql.zip.sha256
