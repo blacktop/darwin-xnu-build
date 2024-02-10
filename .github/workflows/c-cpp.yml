@@ -50,17 +50,20 @@ jobs:
       - name: Build XNU
         run: |
           MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=VMAPPLE KC_FILTER='com.apple.driver.SEPHibernation|com.apple.iokit.IOACPIFamily' bash -x build.sh --kc
-          ipsw macho info fakeroot/oss-xnu.macOS.${{ matrix.macos-version }}.*.kc
+          ipsw macho info fakeroot/oss-xnu.macOS.${{ matrix.macos-version }}.kc.vmapple
+          shasum -a 256 fakeroot/System/Library/Kernels/kernel.release.vmapple > kernel.release.vmapple.sha256
 
       - uses: actions/upload-artifact@v4
         with:
           name: xnu-build-${{ matrix.macos-version }}
           path: |
             fakeroot/System/Library/Kernels/
-            fakeroot/oss-xnu.macOS.${{ matrix.macos-version }}.*.kc
+            fakeroot/oss-xnu.macOS.${{ matrix.macos-version }}.kc.vmapple
 
       - name: Build XNU CodeQL Database
-        run: MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=VMAPPLE bash -x codeql.sh
+        run: |
+          MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=VMAPPLE bash -x codeql.sh
+          shasum -a 256 Ghidra_${{ env.GHIDRA_VERSION }}.zip > Ghidra_${{ env.GHIDRA_VERSION }}.zip.sha256
 
       - uses: actions/upload-artifact@v4
         with:
