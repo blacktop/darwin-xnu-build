@@ -37,10 +37,10 @@ function info() {
     echo -e "$COL_BLUE[info] $COL_RESET""$1"
 }
 
-: "${KERNEL_CONFIG:=RELEASE}"
-: "${ARCH_CONFIG:=ARM64}"
-: "${MACHINE_CONFIG:=VMAPPLE}"
-: "${XNU_VERSION:=''}"
+: ${KERNEL_CONFIG:=RELEASE}
+: ${ARCH_CONFIG:=ARM64}
+: ${MACHINE_CONFIG:=VMAPPLE}
+: ${XNU_VERSION:=''}
 
 function install_codeql() {
     if ! [ -x "$(command -v codeql)" ]; then
@@ -51,9 +51,9 @@ function install_codeql() {
 
 function create_db() {
     WORK_DIR="$PWD"
-    BUILD_DIR=${WORK_DIR}/build
-    FAKEROOT_DIR=${WORK_DIR}/fakeroot
-    DATABASE_DIR=${WORK_DIR}/xnu-codeql
+    BUILD_DIR="${WORK_DIR}/build"
+    FAKEROOT_DIR="${WORK_DIR}/fakeroot"
+    DATABASE_DIR="${WORK_DIR}/xnu-codeql"
     rm -rf "${BUILD_DIR}"
     rm -rf "${FAKEROOT_DIR}"
     rm -rf "${DATABASE_DIR}"
