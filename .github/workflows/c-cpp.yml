@@ -63,7 +63,7 @@ jobs:
       - name: Build XNU CodeQL Database
         run: |
           MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=VMAPPLE bash -x codeql.sh
-          shasum -a 256 Ghidra_${{ env.GHIDRA_VERSION }}.zip > Ghidra_${{ env.GHIDRA_VERSION }}.zip.sha256
+          shasum -a 256 xnu-codeql.zip > xnu-codeql.zip.sha256
 
       - uses: actions/upload-artifact@v4
         with:
