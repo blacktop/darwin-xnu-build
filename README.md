@@ -23,33 +23,20 @@
 
 Compile Successfully:
 
-- [x] macOS 13.0
-- [x] macOS 13.1
-- [x] macOS 13.2
-- [x] macOS 13.3
-- [x] macOS 13.4
-- [x] macOS 13.5
-- [x] macOS 14.0
-- [x] macOS 14.1
-- [x] macOS 14.2
-- [x] macOS 14.3
+- [x] macOS 13.0 [CodeQL DB](https://github.com/blacktop/darwin-xnu-build/releases/download/v13.0/xnu-codeql.zip)
+- [x] macOS 13.1 [CodeQL DB](https://github.com/blacktop/darwin-xnu-build/releases/download/v13.1/xnu-codeql.zip)
+- [x] macOS 13.2 [CodeQL DB](https://github.com/blacktop/darwin-xnu-build/releases/download/v13.2/xnu-codeql.zip)
+- [x] macOS 13.3 [CodeQL DB](https://github.com/blacktop/darwin-xnu-build/releases/download/v13.3/xnu-codeql.zip)
+- [x] macOS 13.4 [CodeQL DB](https://github.com/blacktop/darwin-xnu-build/releases/download/v13.4/xnu-codeql.zip)
+- [x] macOS 13.5 [CodeQL DB](https://github.com/blacktop/darwin-xnu-build/releases/download/v13.5/xnu-codeql.zip)
+- [x] macOS 14.0 [CodeQL DB](https://github.com/blacktop/darwin-xnu-build/releases/download/v14.0/xnu-codeql.zip)
+- [x] macOS 14.1 [CodeQL DB](https://github.com/blacktop/darwin-xnu-build/releases/download/v14.1/xnu-codeql.zip)
+- [x] macOS 14.2 [CodeQL DB](https://github.com/blacktop/darwin-xnu-build/releases/download/v14.2/xnu-codeql.zip)
+- [x] macOS 14.3 [CodeQL DB](https://github.com/blacktop/darwin-xnu-build/releases/download/v14.3/xnu-codeql.zip)
 
 Verified Booting to Desktop:
 
 - [x] macOS 14.3 (`arm64/ x86_64`)
-
-## Prebuilt CodeQL Databases
-
-- [macOS 13.0](https://github.com/blacktop/darwin-xnu-build/releases/download/v13.0/xnu-codeql.zip)
-- [macOS 13.1](https://github.com/blacktop/darwin-xnu-build/releases/download/v13.1/xnu-codeql.zip)
-- [macOS 13.2](https://github.com/blacktop/darwin-xnu-build/releases/download/v13.2/xnu-codeql.zip)
-- [macOS 13.3](https://github.com/blacktop/darwin-xnu-build/releases/download/v13.3/xnu-codeql.zip)
-- [macOS 13.4](https://github.com/blacktop/darwin-xnu-build/releases/download/v13.4/xnu-codeql.zip)
-- [macOS 13.5](https://github.com/blacktop/darwin-xnu-build/releases/download/v13.5/xnu-codeql.zip)
-- [macOS 14.0](https://github.com/blacktop/darwin-xnu-build/releases/download/v14.0/xnu-codeql.zip)
-- [macOS 14.1](https://github.com/blacktop/darwin-xnu-build/releases/download/v14.1/xnu-codeql.zip)
-- [macOS 14.2](https://github.com/blacktop/darwin-xnu-build/releases/download/v14.2/xnu-codeql.zip)
-- [macOS 14.3](https://github.com/blacktop/darwin-xnu-build/releases/download/v14.3/xnu-codeql.zip)
 
 ## Why? 🤔
 
