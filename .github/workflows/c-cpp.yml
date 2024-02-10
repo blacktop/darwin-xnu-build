@@ -51,7 +51,10 @@ jobs:
         run: |
           MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=VMAPPLE KC_FILTER='com.apple.driver.SEPHibernation|com.apple.iokit.IOACPIFamily' bash -x build.sh --kc
           ipsw macho info fakeroot/oss-xnu.macOS.${{ matrix.macos-version }}.kc.vmapple
-          shasum -a 256 fakeroot/System/Library/Kernels/kernel.release.vmapple > kernel.release.vmapple.sha256
+          ls -lah fakeroot/System/Library/Kernels/
+          cp fakeroot/System/Library/Kernels/kernel.release.vmapple .
+          echo "$(shasum -a 256 kernel.release.vmapple)"
+          shasum -a 256 kernel.release.vmapple > kernel.release.vmapple.sha256
 
       - uses: actions/upload-artifact@v4
         with:
@@ -63,6 +66,7 @@ jobs:
       - name: Build XNU CodeQL Database
         run: |
           MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=VMAPPLE bash -x codeql.sh
+          echo "$(shasum -a 256 xnu-codeql.zip)"
           shasum -a 256 xnu-codeql.zip > xnu-codeql.zip.sha256
 
       - uses: actions/upload-artifact@v4
