@@ -79,7 +79,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           ls -lah
-          gh release upload v${{ matrix.macos-version }} --clobber fakeroot/System/Library/Kernels/kernel.release.vmapple
+          gh release upload v${{ matrix.macos-version }} --clobber kernel.release.vmapple
           gh release upload v${{ matrix.macos-version }} --clobber kernel.release.vmapple.sha256
           gh release upload v${{ matrix.macos-version }} --clobber xnu-codeql.zip
           gh release upload v${{ matrix.macos-version }} --clobber xnu-codeql.zip.sha256
