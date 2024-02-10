@@ -15,15 +15,7 @@ jobs:
     runs-on: macos-13
     strategy:
       matrix:
-        include:
-          -  macos-version: "14.0"
-             xcode-version: "15.0.1"
-          -  macos-version: "14.1"
-             xcode-version: "15.0.1"
-          -  macos-version: "14.2"
-             xcode-version: "15.1"
-          -  macos-version: "14.3"
-             xcode-version: "15.2"
+        macos-version: [ '14.0', '14.1', '14.2', '14.3' ]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,7 +27,7 @@ jobs:
           brew update
           brew install bash blacktop/tap/ipsw
           sudo ipsw dl kdk --host --install
-          sudo xcode-select -s /Applications/Xcode_${{ matrix.xcode-version }}.app
+          sudo xcode-select -s /Applications/Xcode_15.2.app
 
       - name: kmutil help # This is to check for what flags are available
         run: |
@@ -58,14 +50,14 @@ jobs:
       - name: Build XNU
         run: |
           MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=VMAPPLE KC_FILTER='com.apple.driver.SEPHibernation|com.apple.iokit.IOACPIFamily' bash -x build.sh --kc
-          ipsw macho info fakeroot/oss-xnu.macOS.${{ matrix.macos-version }}.*.kc
+          ipsw macho info fakeroot/oss-xnu.macOS.${{ matrix.macos-version }}.kc.vmapple
 
       - uses: actions/upload-artifact@v4
         with:
           name: xnu-build-${{ matrix.macos-version }}
           path: |
             fakeroot/System/Library/Kernels/
-            fakeroot/oss-xnu.macOS.${{ matrix.macos-version }}.*.kc
+            fakeroot/oss-xnu.macOS.${{ matrix.macos-version }}.kc.vmapple
 
       - name: Build XNU CodeQL Database
         run: MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=VMAPPLE bash -x codeql.sh

@@ -32,14 +32,13 @@ function error() {
 }
 
 # Config
-: "${KERNEL_CONFIG:=RELEASE}"
-: "${ARCH_CONFIG:=ARM64}"
-: "${MACHINE_CONFIG:=VMAPPLE}"
-: "${MACOS_VERSION:=''}"
-: "${JSONDB:=0}"
-: "${CODEQL:=0}"
-: "${BUILDKC:=0}"
-: "${KC_FILTER:='com.apple.driver.SEPHibernation'}"
+: ${KERNEL_CONFIG:=RELEASE}
+: ${ARCH_CONFIG:=ARM64}
+: ${MACHINE_CONFIG:=VMAPPLE}
+: ${MACOS_VERSION:=""}
+: ${JSONDB:=0}
+: ${CODEQL:=0}
+: ${KC_FILTER:='com.apple.driver.SEPHibernation'}
 
 WORK_DIR="$PWD"
 CACHE_DIR="${WORK_DIR}/.cache"
