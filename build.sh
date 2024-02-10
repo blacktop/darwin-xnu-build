@@ -204,7 +204,7 @@ choose_xnu() {
     if [ ! -d "$KDKROOT" ]; then
         KDK_URL=$(curl -s "https://raw.githubusercontent.com/dortania/KdkSupportPkg/gh-pages/manifest.json" | jq -r --arg KDK_NAME "$KDK_NAME" '.[] | select(.name==$KDK_NAME) | .url')
         running "Downloading '$KDK_NAME' to /tmp"
-        curl --progress-bar -L -o /tmp/KDK.dmg "${KDK_URL}"
+        curl --progress-bar --max-time 900 --connect-timeout 60 -L -o /tmp/KDK.dmg "${KDK_URL}"
         running "Installing KDK"
         hdiutil attach /tmp/KDK.dmg
         sudo installer -pkg '/Volumes/Kernel Debug Kit/KernelDebugKit.pkg' -target /
