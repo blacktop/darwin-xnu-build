@@ -49,8 +49,7 @@ jobs:
 
       - name: Build XNU
         run: |
-          # MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=VMAPPLE KC_FILTER='com.apple.driver.SEPHibernation|com.apple.iokit.IOACPIFamily' bash -x build.sh --kc
-          MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=VMAPPLE KC_FILTER='com.apple.driver.SEPHibernation' bash -x build.sh --kc
+          MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=VMAPPLE KC_FILTER='com.apple.driver.SEPHibernation|com.apple.iokit.IOACPIFamily' bash -x build.sh --kc
           ipsw macho info fakeroot/oss-xnu.macOS.${{ matrix.macos-version }}.*.kc
 
       - uses: actions/upload-artifact@v4
