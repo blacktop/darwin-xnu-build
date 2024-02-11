@@ -1,8 +1,12 @@
 # darwin-xnu-build
 
-[![XNU CodeQL](https://github.com/blacktop/darwin-xnu-build/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/blacktop/darwin-xnu-build/actions/workflows/c-cpp.yml)
+[![XNU CodeQL](https://github.com/blacktop/darwin-xnu-build/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/blacktop/darwin-xnu-build/actions/workflows/c-cpp.yml) ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/blacktop/darwin-xnu-build/total)
+ [![LICENSE](https://img.shields.io/:license-mit-blue.svg)](https://doge.mit-license.org)
 
-> This repository contains the xnu src as well as scripts to build it as well as generate a kernel collection and a CodeQL database.
+
+
+
+> This repository contains scripts to build [xnu](https://github.com/apple-oss-distributions/xnu) as well as generate a kernel collection and [CodeQL](https://codeql.github.com) databases.
 
 ---
 
