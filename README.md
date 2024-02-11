@@ -10,19 +10,6 @@
 
 ---
 
-## Dependencies
-
-- [homebrew](https://brew.sh)
-  - [jq](https://stedolan.github.io/jq/)
-  - [gum](https://github.com/charmbracelet/gum)
-  - [xcodes](https://github.com/RobotsAndPencils/xcodes)
-  - [ipsw](https://github.com/blacktop/ipsw)
-  - [cmake](https://cmake.org)
-  - [ninja](https://ninja-build.org)
-- XCode
-- python3
-- [codeql CLI](https://codeql.github.com/docs/codeql-cli/)
-
 ## Supported OS Versions
 
 | Version    | Compiles |                                          CodeQL                                           | Boots *(arm64/x86_64)* |
@@ -44,7 +31,23 @@ I'm hoping to patch and build the xnu source in interesting ways to aid in resea
 
 ## Getting Started
 
-Clone the repo
+### Dependencies
+
+- [homebrew](https://brew.sh)
+  - [jq](https://stedolan.github.io/jq/)
+  - [gum](https://github.com/charmbracelet/gum)
+  - [xcodes](https://github.com/RobotsAndPencils/xcodes)
+  - [ipsw](https://github.com/blacktop/ipsw)
+  - [cmake](https://cmake.org)
+  - [ninja](https://ninja-build.org)
+- XCode
+- python3
+- [codeql CLI](https://codeql.github.com/docs/codeql-cli/)
+
+> [!NOTE]
+> The `build.sh` script will install all these for you if you are connected to the internet.
+
+### Clone the repo
 
 ```bash
 git clone https://github.com/blacktop/darwin-xnu-build.git
@@ -64,7 +67,7 @@ Where:
     -k|--kc         create kernel collection (via kmutil create)
 ```
 
-Build the kernel and kernel Collection
+### Build the kernel and kernel Collection
 
 ```bash
 KERNEL_CONFIG=RELEASE ARCH_CONFIG=ARM64 MACHINE_CONFIG=T6000 ./build.sh --kc
@@ -106,6 +109,9 @@ time to compute slide info: 1ms
 time to compute UUID and codesign cache file: 1ms
   🎉 XNU Build Done!
 ```
+
+Check that the output contains all the KEXTs
+
 ```bash
 ❯ ipsw macho info build/oss-xnu.kc | head
 Magic         = 64-bit MachO
@@ -121,13 +127,13 @@ Flags         = None
 <SNIP>
 ```
 
-Clean rebuild the kernel and kernel collection
+### Clean rebuild the kernel and kernel collection
 
 ```bash
 KERNEL_CONFIG=RELEASE ARCH_CONFIG=ARM64 MACHINE_CONFIG=T6000 ./build.sh --clean --kc
 ```
 
-Generate a CodeQL database
+### Generate a CodeQL database
 
 ```bash
 ./codeql.sh
@@ -144,7 +150,7 @@ Successfully created database at darwin-xnu-build/xnu-codeql.
   🎉 CodeQL Database Create Done!
 ```
 
-Zips up the CodeQL database
+Script builds and zips up the CodeQL database
 
 ```bash
 ❯ ll xnu-codeql.zip
