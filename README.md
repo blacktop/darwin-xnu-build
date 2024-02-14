@@ -25,6 +25,19 @@
 | macOS 14.2 |    ✅     | [DB](https://github.com/blacktop/darwin-xnu-build/releases/download/v14.2/xnu-codeql.zip) |   ❔       /       ❔    |
 | macOS 14.3 |    ✅     | [DB](https://github.com/blacktop/darwin-xnu-build/releases/download/v14.3/xnu-codeql.zip) |   ✅       /       ✅    |
 
+> [!NOTE]
+> CodeQL DBs built with `MACHINE_CONFIG=VMAPPLE`  
+> MacOS `14.3` booted:
+> - via Virtualization.framework with `MACHINE_CONFIG=VMAPPLE`
+> - via qemu with `ARCH_CONFIG=x86_64`
+> - via ASi tested with `MACHINE_CONFIG=T8101` and `MACHINE_CONFIG=T6000`
+
+### Known Issue ⚠️
+
+Currently `MACHINE_CONFIG=T8103` is not correctly building for at least `14.3`
+
+When attempting to boot try adding the boot-arg `-unsafe_kernel_text`
+
 ## Why? 🤔
 
 I'm hoping to patch and build the xnu source in interesting ways to aid in research and development of macOS/iOS security research tools as well as generate [CodeQL](https://securitylab.github.com/tools/codeql) databases for the community to use.
