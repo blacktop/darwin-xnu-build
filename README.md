@@ -36,7 +36,8 @@
 
 Currently `MACHINE_CONFIG=T8103` is not correctly building for at least `14.3`
 
-When attempting to boot try adding the boot-arg: `sudo nvram boot-args="-unsafe_kernel_text"`
+> [!NOTE]
+> When attempting to boot try adding the boot-arg: `sudo nvram boot-args="-unsafe_kernel_text"`
 
 ## Why? 🤔
 
