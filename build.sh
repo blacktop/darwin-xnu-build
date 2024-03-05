@@ -136,7 +136,7 @@ choose_xnu() {
     fi
     TIGHTBEAMC="tightbeamc-not-supported"
     case ${MACOS_VERSION} in
-    '125')
+    '12.5')
         RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-125/release.json'
         KDK_NAME='Kernel Debug Kit 12.5 build 21G72'
         KDKROOT='/Library/Developer/KDKs/KDK_12.5_21G72.kdk'
