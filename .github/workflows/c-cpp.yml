@@ -1,11 +1,12 @@
 name: XNU CodeQL
 
 on:
-  push:
-    branches: [ main ]
-    paths-ignore: [ "*.md" ]
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:
+  # push:
+  #   branches: [ main ]
+  #   paths-ignore: [ "*.md" ]
+  # pull_request:
+  #   branches: [ main ]
 
 concurrency:
   group: ${{ github.ref }}
