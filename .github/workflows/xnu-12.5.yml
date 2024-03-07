@@ -1,4 +1,7 @@
 name: XNU 12.5
+  
+on:
+  workflow_dispatch: 
 
 # on:
   # push:
