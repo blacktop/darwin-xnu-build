@@ -11,7 +11,7 @@ name: XNU ${MACOS_VERSION}
       
 jobs:
   call_reusable_workflow:
-    uses: ./.github/workflows/template-xnu-build.yml@main
+    uses: ./.github/workflows/template-xnu-build.yml
     with:
       macos-version: '${MACOS_VERSION}'
       xcode-version: '${XCODE_VERSION}'
