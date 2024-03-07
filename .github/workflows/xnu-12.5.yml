@@ -1,0 +1,18 @@
+name: XNU 12.5
+
+# on:
+  # push:
+  #   branches: [ main ]
+  #   paths-ignore: [ "*.md" ]
+    # tags:
+    #   - 'macos/12.5*' ???
+  # pull_request:
+  #   branches: [ main ]
+      
+jobs:
+  call_reusable_workflow:
+    uses: ./.github/workflows/template-xnu-build.yml@main
+    with:
+      macos-version: '12.5'
+      xcode-version: '15.2'
+      machine-config: 'NONE'
