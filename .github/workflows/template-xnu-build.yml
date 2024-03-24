@@ -1,0 +1,97 @@
+name: Versioned XNU Build
+
+on:
+  # push:
+  #   branches: [ main ]
+  #   paths-ignore: [ "*.md" ]
+  # pull_request:
+  #   branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      macos-version:
+        required: true
+        type: string
+        description: macOS version to build
+      xcode-version:
+        type: string
+        description: Xcode version to use
+        default: '15.2'
+      machine-config:
+        type: string
+        description: Machine configuration to apply
+        default: 'VMAPPLE'
+    
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-13
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Deps
+        run: |
+          brew update
+          brew install bash blacktop/tap/ipsw
+          sudo ipsw dl kdk --host --install
+          sudo xcode-select -s /Applications/Xcode_${{ input.xcode-version }}.app
+
+      - name: kmutil help # This is to check for what flags are available
+        run: |
+          sysctl -n kern.bootobjectspath || true
+          sw_vers
+          kmutil inspect
+
+      # - name: Cache JSONDB
+      #   id: cache-jsondb
+      #   uses: actions/cache@v4
+      #   with:
+      #     path: .cache/${{ input.macos-version }}/compile_commands.json
+      #     key: ${{ input.macos-version }}-jsondb
+
+      # - name: Build XNU JSON compilation database
+      #   if: steps.cache-jsondb.outputs.cache-hit != 'true'
+      #   run: |
+      #     MACOS_VERSION='${{ input.macos-version }}' MACHINE_CONFIG=VMAPPLE JSONDB=1 bash -x build.sh
+
+      - name: Build XNU
+        run: |
+          MACOS_VERSION='${{ input.macos-version }}' MACHINE_CONFIG=${{ input.machine-config }} KC_FILTER='com.apple.driver.SEPHibernation|com.apple.iokit.IOACPIFamily' bash -x build.sh --kc
+          ipsw macho info fakeroot/oss-xnu.macOS.${{ input.macos-version }}.kc.${{ input.machine-config | toLowerCase }}
+          ls -lah fakeroot/System/Library/Kernels/
+          cp fakeroot/System/Library/Kernels/kernel.release.${{ input.machine-config | toLowerCase }} .
+          echo "$(shasum -a 256 kernel.release.${{ input.machine-config | toLowerCase }})"
+          shasum -a 256 kernel.release.${{ input.machine-config | toLowerCase }} > kernel.release.${{ input.machine-config | toLowerCase }}.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xnu-build-${{ input.macos-version }}
+          path: |
+            fakeroot/System/Library/Kernels/
+            fakeroot/oss-xnu.macOS.${{ input.macos-version }}.kc.${{ input.machine-config | toLowerCase }}
+
+      - name: Build XuNU CodeQL Database
+        run: |
+          MACOS_VERSION='${{ input.macos-version }}' MACHINE_CONFIG=${{ input.machine-config }} bash -x codeql.sh
+          echo "$(shasum -a 256 xnu-codeql.zip)"
+          shasum -a 256 xnu-codeql.zip > xnu-codeql.zip.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xnu-codeql-${{ input.macos-version }}
+          path: xnu-codeql.zip
+
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls -lah
+          gh release upload v${{ input.macos-version }} --clobber kernel.release.${{ input.machine-config | toLowerCase }}
+          gh release upload v${{ input.macos-version }} --clobber kernel.release.${{ input.machine-config | toLowerCase }}.sha256
+          gh release upload v${{ input.macos-version }} --clobber xnu-codeql.zip
+          gh release upload v${{ input.macos-version }} --clobber xnu-codeql.zip.sha256

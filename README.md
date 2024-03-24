@@ -14,6 +14,7 @@
 
 | Version    | Compiles |                                          CodeQL                                           | Boots *(arm64/x86_64)* |
 | ---------- | :------: | :---------------------------------------------------------------------------------------: | :--------------------: |
+| macOS 12.5 |    ✅     | ❔                                                                                        |   ❔       /       ✅    |
 | macOS 13.0 |    ✅     | [DB](https://github.com/blacktop/darwin-xnu-build/releases/download/v13.0/xnu-codeql.zip) |   ❔       /       ❔    |
 | macOS 13.1 |    ✅     | [DB](https://github.com/blacktop/darwin-xnu-build/releases/download/v13.1/xnu-codeql.zip) |   ❔       /       ❔    |
 | macOS 13.2 |    ✅     | [DB](https://github.com/blacktop/darwin-xnu-build/releases/download/v13.2/xnu-codeql.zip) |   ❔       /       ❔    |
