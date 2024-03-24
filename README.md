@@ -171,6 +171,47 @@ Script builds and zips up the CodeQL database
 -rw-r--r--@ 1 blacktop  staff   219M Mar  3 22:35 xnu-codeql.zip
 ```
 
+### Generate a CodeQL database *(in a `local` **Tart** VM)*
+
+Install deps: *[packer](https://developer.hashicorp.com/packer), [tart](https://tart.ru) and [cirrus](https://github.com/cirruslabs/cirrus-cli)*
+
+```bash
+make deps
+```
+
+Build VM image
+
+```bash
+make build-vm
+```
+
+Create CodeQL DB
+
+```bash
+make codeql-db
+```
+
+```bash
+ > Building CodeQL Database
+🕓 'Build' Task 08:22
+   ✅ pull virtual machine 0.0s
+✅ 'Build' Task 47:59
+ 🎉 Done! 🎉
+🕒 'Build' Task 46:28
+✅ 'Build' Task 48:15
+```
+
+```bash
+tree artifacts/
+
+artifacts/
+└── Build
+    └── binary
+        └── xnu-codeql.zip
+
+3 directories, 1 file
+```
+
 ## TODO
 
 - [x] ~~Auto build xnu with Github Actions~~

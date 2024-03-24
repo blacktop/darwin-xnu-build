@@ -20,7 +20,8 @@ export-vm:
 	@tart export $(MACOS_VM_NAME)
 	@echo " 🎉 Done! 🎉"
 
-run:
+.PHONY: codeql-db
+codeql-db:
 	@echo " > Building CodeQL Database"
 	@cirrus run
 	@echo " 🎉 Done! 🎉"
