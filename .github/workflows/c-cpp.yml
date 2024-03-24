@@ -3,7 +3,10 @@ name: XNU CodeQL
 on:
   push:
     branches: [ main ]
-    paths-ignore: [ "*.md" ]
+    paths-ignore:
+      - "*.md"
+      - Makefile
+      - .cirrus.yml
   pull_request:
     branches: [ main ]
 

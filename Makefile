@@ -20,7 +20,6 @@ export-vm:
 	@echo " 🎉 Done! 🎉"
 
 run:
-brew install cirruslabs/cli/cirrus
 	@echo " > Building CodeQL Database"
 	@cirrus run
 	@echo " 🎉 Done! 🎉"
