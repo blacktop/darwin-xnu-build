@@ -1,0 +1,8 @@
+task:
+  name: Build
+  macos_instance:
+    image: sonoma-codeql:latest
+  build_script: MACOS_VERSION='14.2' MACHINE_CONFIG=VMAPPLE bash -x build.sh
+  codeql_script: MACOS_VERSION='14.2' MACHINE_CONFIG=VMAPPLE bash -x codeql.sh
+  binary_artifacts:
+    path: xnu-codeql.zip
