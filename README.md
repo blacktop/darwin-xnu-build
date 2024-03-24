@@ -202,7 +202,7 @@ make codeql-db
 ```
 
 ```bash
-tree artifacts/
+❯ tree artifacts/
 
 artifacts/
 └── Build
