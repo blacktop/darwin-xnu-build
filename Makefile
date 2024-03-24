@@ -4,6 +4,7 @@ MACOS_VM_NAME=sonoma-codeql
 .PHONY: deps
 deps:
 	@echo " > Installing dependencies"
+	brew install hashicorp/tap/packer
 	brew install cirruslabs/cli/tart
 	brew install cirruslabs/cli/cirrus
 
