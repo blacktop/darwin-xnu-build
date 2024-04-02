@@ -28,7 +28,7 @@ jobs:
 
       - name: Deps
         run: |
-          brew update
+          # brew update
           brew install bash blacktop/tap/ipsw
           sudo ipsw dl kdk --host --install
           sudo xcode-select -s /Applications/Xcode_15.2.app
