@@ -11,6 +11,7 @@ deps:
 .PHONY: build-vm
 build-vm:
 	@echo " > Building macOS VM"
+	@packer init -upgrade ./templates/codeql.pkr.hcl
 	@packer build -var "macos_version=$(MACOS_VERSION)" -var "macos_vm_name=$(MACOS_VM_NAME)" ./templates/codeql.pkr.hcl
 	@echo " 🎉 Done! 🎉"
 
