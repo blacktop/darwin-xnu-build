@@ -48,6 +48,7 @@ venv
 compile_commands.json
 build
 fakeroot
+release.json
 # build repos
 xnu
 AvailabilityVersions

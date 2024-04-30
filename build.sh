@@ -48,6 +48,7 @@ FAKEROOT_DIR="${WORK_DIR}/fakeroot"
 DSTROOT="${FAKEROOT_DIR}"
 
 HAVE_WE_INSTALLED_HEADERS_YET="${FAKEROOT_DIR}/.xnu_headers_installed"
+CACHED_RELEASE="${WORK_DIR}/release.json"
 
 KERNEL_FRAMEWORK_ROOT='/System/Library/Frameworks/Kernel.framework/Versions/A'
 KC_VARIANT=$(echo "$KERNEL_CONFIG" | tr '[:upper:]' '[:lower:]')
@@ -71,6 +72,7 @@ clean() {
     declare -a paths_to_delete=(
         "${BUILD_DIR}"
         "${FAKEROOT_DIR}"
+        "${CACHED_RELEASE}"
         "${WORK_DIR}/xnu"
         "${WORK_DIR}/bootstrap_cmds"
         "${WORK_DIR}/dtrace"
@@ -237,10 +239,32 @@ venv() {
     source "${WORK_DIR}/venv/bin/activate"
 }
 
+# Retrieve release.json from GitHub, and append its url to the json file
+fetch_release_json() {
+    local url=$1
+    running "Fetching release.json from $url"
+    curl -s "$url" | jq '{url: "'$url'", data: .}' > "${CACHED_RELEASE}"
+}
+
+get_config() {
+    local cached_url
+    if [ -f "${CACHED_RELEASE}" ]; then
+        # Check if our cached release.json matches the version being built;
+        # redownload if not
+        cached_url=$(jq -r '.url' "${CACHED_RELEASE}")
+
+        if [ "$cached_url" != "$RELEASE_URL" ]; then
+            fetch_release_json "$RELEASE_URL"
+        fi
+    else
+        fetch_release_json "$RELEASE_URL"
+    fi
+}
+
 get_xnu() {
     if [ ! -d "${WORK_DIR}/xnu" ]; then
         running "⬇️ Cloning xnu"
-        XNU_VERSION=$(curl -s $RELEASE_URL | jq -r '.projects[] | select(.project=="xnu") | .tag')
+        XNU_VERSION=$(cat "${CACHED_RELEASE}" | jq -r '.data.projects[] | select(.project=="xnu") | .tag')
         git clone --branch "${XNU_VERSION}" https://github.com/apple-oss-distributions/xnu.git "${WORK_DIR}/xnu"
     fi
     if [ -f "${CACHE_DIR}/${MACOS_VERSION}/compile_commands.json" ]; then
@@ -251,6 +275,16 @@ get_xnu() {
 
 patches() {
     running "🩹 Patching xnu files"
+
+    # Check for a version-specific patch file
+    XNU_VERSION=$(cat "${CACHED_RELEASE}" | jq -r '.data.projects[] | select(.project=="xnu") | .tag')
+    if [ -f "version_patches/$XNU_VERSION.patch" ]; then
+        if ! git apply --reverse --check --directory='xnu' version_patches/"$XNU_VERSION".patch 2> /dev/null; then
+            git apply --directory='xnu' version_patches/"$XNU_VERSION".patch
+            return 0
+        fi
+    fi
+
     # xnu headers patch
     sed -i '' 's|^AVAILABILITY_PL="${SDKROOT}/${DRIVERKITROOT}|AVAILABILITY_PL="${FAKEROOT_DIR}|g' "${WORK_DIR}/xnu/bsd/sys/make_symbol_aliasing.sh"
     # libsyscall patch
@@ -278,7 +312,7 @@ build_bootstrap_cmds() {
         running "📦 Building bootstrap_cmds"
 
         if [ ! -d "${WORK_DIR}/bootstrap_cmds" ]; then
-            BOOTSTRAP_VERSION=$(curl -s $RELEASE_URL | jq -r '.projects[] | select(.project=="bootstrap_cmds") | .tag')
+            BOOTSTRAP_VERSION=$(cat "${CACHED_RELEASE}" | jq -r '.data.projects[] | select(.project=="bootstrap_cmds") | .tag')
             git clone --branch "${BOOTSTRAP_VERSION}" https://github.com/apple-oss-distributions/bootstrap_cmds.git "${WORK_DIR}/bootstrap_cmds"
         fi
 
@@ -300,7 +334,7 @@ build_dtrace() {
     if [ ! "$(find "${FAKEROOT_DIR}" -name 'ctfmerge' | wc -l )" -gt 0 ]; then
         running "📦 Building dtrace"
         if [ ! -d "${WORK_DIR}/dtrace" ]; then
-            DTRACE_VERSION=$(curl -s $RELEASE_URL | jq -r '.projects[] | select(.project=="dtrace") | .tag')
+            DTRACE_VERSION=$(cat "${CACHED_RELEASE}" | jq -r '.data.projects[] | select(.project=="dtrace") | .tag')
             git clone --branch "${DTRACE_VERSION}" https://github.com/apple-oss-distributions/dtrace.git "${WORK_DIR}/dtrace"
         fi
         SRCROOT="${WORK_DIR}/dtrace"
@@ -316,7 +350,7 @@ build_availabilityversions() {
     if [ ! "$(find "${FAKEROOT_DIR}" -name 'availability.pl' | wc -l )" -gt 0 ]; then
         running "📦 Building AvailabilityVersions"
         if [ ! -d "${WORK_DIR}/AvailabilityVersions" ]; then
-            AVAILABILITYVERSIONS_VERSION=$(curl -s $RELEASE_URL | jq -r '.projects[] | select(.project=="AvailabilityVersions") | .tag')
+            AVAILABILITYVERSIONS_VERSION=$(cat "${CACHED_RELEASE}" | jq -r '.data.projects[] | select(.project=="AvailabilityVersions") | .tag')
             git clone --branch "${AVAILABILITYVERSIONS_VERSION}" https://github.com/apple-oss-distributions/AvailabilityVersions.git "${WORK_DIR}/AvailabilityVersions"
         fi
         SRCROOT="${WORK_DIR}/AvailabilityVersions"
@@ -345,7 +379,7 @@ libsystem_headers() {
     if [ ! -d "${FAKEROOT_DIR}/System/Library/Frameworks/System.framework" ]; then
         running "Installing Libsystem headers"
         if [ ! -d "${WORK_DIR}/Libsystem" ]; then
-            LIBSYSTEM_VERSION=$(curl -s $RELEASE_URL | jq -r '.projects[] | select(.project=="Libsystem") | .tag')
+            LIBSYSTEM_VERSION=$(cat "${CACHED_RELEASE}" | jq -r '.data.projects[] | select(.project=="Libsystem") | .tag')
             git clone --branch "${LIBSYSTEM_VERSION}" https://github.com/apple-oss-distributions/Libsystem.git "${WORK_DIR}/Libsystem"
         fi
         sed -i '' 's|^#include.*BSD.xcconfig.*||g' "${WORK_DIR}/Libsystem/Libsystem.xcconfig"
@@ -374,7 +408,7 @@ build_libplatform() {
     if [ ! -f "${FAKEROOT_DIR}/usr/local/include/_simple.h" ]; then
         running "📦 Building libplatform"
         if [ ! -d "${WORK_DIR}/libplatform" ]; then
-            LIBPLATFORM_VERSION=$(curl -s $RELEASE_URL | jq -r '.projects[] | select(.project=="libplatform") | .tag')
+            LIBPLATFORM_VERSION=$(cat "${CACHED_RELEASE}" | jq -r '.data.projects[] | select(.project=="libplatform") | .tag')
             git clone --branch "${LIBPLATFORM_VERSION}" https://github.com/apple-oss-distributions/libplatform.git "${WORK_DIR}/libplatform"
         fi
         SRCROOT="${WORK_DIR}/libplatform"
@@ -389,7 +423,7 @@ build_libdispatch() {
     if [ ! -f "${FAKEROOT_DIR}/usr/local/lib/kernel/libfirehose_kernel.a" ]; then
         running "📦 Building libdispatch"
         if [ ! -d "${WORK_DIR}/libdispatch" ]; then
-            LIBDISPATCH_VERSION=$(curl -s $RELEASE_URL | jq -r '.projects[] | select(.project=="libdispatch") | .tag')
+            LIBDISPATCH_VERSION=$(cat "${CACHED_RELEASE}" | jq -r '.data.projects[] | select(.project=="libdispatch") | .tag')
             git clone --branch "${LIBDISPATCH_VERSION}" https://github.com/apple-oss-distributions/libdispatch.git "${WORK_DIR}/libdispatch"
         fi
         SRCROOT="${WORK_DIR}/libdispatch"
@@ -494,6 +528,7 @@ main() {
     done
     install_deps
     choose_xnu
+    get_config
     get_xnu
     patches
     venv
