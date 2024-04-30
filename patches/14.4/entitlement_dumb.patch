@@ -1,0 +1,34 @@
+diff --git a/bsd/kern/kern_exec.c b/bsd/kern/kern_exec.c
+index 685f28bf..474dbc8d 100644
+--- a/bsd/kern/kern_exec.c
++++ b/bsd/kern/kern_exec.c
+@@ -183,7 +183,11 @@
+
+ #include "kern_exec_internal.h"
+
+-#include <CodeSignature/Entitlements.h>
++// #include <CodeSignature/Entitlements.h>
++#define kCSWebBrowserHostEntitlement "com.apple.private.web-browser-engine.host"
++#define kCSWebBrowserGPUEntitlement "com.apple.private.web-browser-engine.gpu"
++#define kCSWebBrowserNetworkEntitlement "com.apple.private.web-browser-engine.network"
++#define kCSWebBrowserWebContentEntitlement "com.apple.private.web-browser-engine.webcontent"
+
+ #include <mach/exclaves.h>
+
+diff --git a/bsd/net/necp_client.c b/bsd/net/necp_client.c
+index 7e18ca4a..ea69e654 100644
+--- a/bsd/net/necp_client.c
++++ b/bsd/net/necp_client.c
+@@ -68,7 +68,11 @@
+
+ #include <os/refcnt.h>
+
+-#include <CodeSignature/Entitlements.h>
++// #include <CodeSignature/Entitlements.h>
++#define kCSWebBrowserHostEntitlement "com.apple.private.web-browser-engine.host"
++#define kCSWebBrowserGPUEntitlement "com.apple.private.web-browser-engine.gpu"
++#define kCSWebBrowserNetworkEntitlement "com.apple.private.web-browser-engine.network"
++#define kCSWebBrowserWebContentEntitlement "com.apple.private.web-browser-engine.webcontent"
+
+ #if SKYWALK
+ #include <skywalk/os_skywalk_private.h>

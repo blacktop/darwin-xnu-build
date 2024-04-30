@@ -1,0 +1,32 @@
+diff --git a/iokit/DriverKit/IOBufferMemoryDescriptor.iig b/iokit/DriverKit/IOBufferMemoryDescriptor.iig
+index 9975a16e..e19d1b81 100644
+--- a/iokit/DriverKit/IOBufferMemoryDescriptor.iig
++++ b/iokit/DriverKit/IOBufferMemoryDescriptor.iig
+@@ -29,6 +29,7 @@
+ #if !__IIG
+ #if KERNEL
+ #include <IOKit/IOBufferMemoryDescriptor.h>
++#include <IOKit/IORPC.h>
+ #endif
+ #endif
+ 
+diff --git a/iokit/DriverKit/OSObject.iig b/iokit/DriverKit/OSObject.iig
+index cb6b015e..30088fd3 100644
+--- a/iokit/DriverKit/OSObject.iig
++++ b/iokit/DriverKit/OSObject.iig
+@@ -29,6 +29,7 @@
+ #if !__IIG
+ #if KERNEL
+ #include <libkern/c++/OSObject.h>
++#include <IOKit/IORPC.h>
+ #endif
+ #endif
+ 
+@@ -276,6 +277,7 @@ class OSMetaClassBase
+ /*!
+ @iig implementation
+ #include <DriverKit/IODispatchQueue.h>
++#include <DriverKit/IORPC.h>
+ @iig end
+ */
+ 

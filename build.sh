@@ -263,8 +263,22 @@ patches() {
     sed -i '' 's|export MIGCOM := $(shell $(XCRUN) -sdk $(SDKROOT) -find migcom)|export MIGCOM := $(shell find $(FAKEROOT_DIR) -name "migcom")|g' "${WORK_DIR}/xnu/makedefs/MakeInc.cmd"
     # Don't apply patches when building CodeQL database to keep code pure
     if [ "$CODEQL" -eq "0" ]; then
+       PATCH_DIR=""
+        case ${MACOS_VERSION} in
+        '13.0' | '13.1' | '13.2' | '13.3' | '13.4' | '13.5' | '14.0' | '14.1' | '14.2' | '14.3')
+            PATCH_DIR="${WORK_DIR}/patches"
+            ;;
+        '14.4')
+            PATCH_DIR="${WORK_DIR}/patches/14.4"
+            ;;
+        *)
+            error "Invalid xnu version"
+            exit 1
+            ;;
+        esac
         cd "${WORK_DIR}/xnu"
-        for PATCH in "${WORK_DIR}/patches"/*.patch; do
+        for PATCH in "${PATCH_DIR}"/*.patch; do
+            running "Applying patch: ${PATCH}"
             if git apply --check "$PATCH" 2> /dev/null; then
                 git apply "$PATCH"
             fi
@@ -495,22 +509,22 @@ main() {
     install_deps
     choose_xnu
     get_xnu
-    patches
-    venv
-    build_bootstrap_cmds
-    build_dtrace
-    build_availabilityversions
-    xnu_headers
-    libsystem_headers
-    libsyscall_headers
-    build_libplatform
-    build_libdispatch
-    build_xnu
-    echo "  🎉 XNU Build Done!"
-    if [ "$BUILDKC" -ne "0" ]; then
-        install_ipsw
-        build_kc
-    fi
+    # patches
+    # venv
+    # build_bootstrap_cmds
+    # build_dtrace
+    # build_availabilityversions
+    # xnu_headers
+    # libsystem_headers
+    # libsyscall_headers
+    # build_libplatform
+    # build_libdispatch
+    # build_xnu
+    # echo "  🎉 XNU Build Done!"
+    # if [ "$BUILDKC" -ne "0" ]; then
+    #     install_ipsw
+    #     build_kc
+    # fi
 }
 
 main "$@"
