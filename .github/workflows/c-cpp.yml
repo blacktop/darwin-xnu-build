@@ -2,7 +2,7 @@ name: XNU CodeQL
 
 on:
   push:
-    branches: [ main ]
+    branches: [ "feat/14.4" ]
     paths-ignore:
       - "*.md"
       - Makefile
