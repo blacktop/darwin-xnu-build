@@ -509,22 +509,22 @@ main() {
     install_deps
     choose_xnu
     get_xnu
-    # patches
-    # venv
-    # build_bootstrap_cmds
-    # build_dtrace
-    # build_availabilityversions
-    # xnu_headers
-    # libsystem_headers
-    # libsyscall_headers
-    # build_libplatform
-    # build_libdispatch
-    # build_xnu
-    # echo "  🎉 XNU Build Done!"
-    # if [ "$BUILDKC" -ne "0" ]; then
-    #     install_ipsw
-    #     build_kc
-    # fi
+    patches
+    venv
+    build_bootstrap_cmds
+    build_dtrace
+    build_availabilityversions
+    xnu_headers
+    libsystem_headers
+    libsyscall_headers
+    build_libplatform
+    build_libdispatch
+    build_xnu
+    echo "  🎉 XNU Build Done!"
+    if [ "$BUILDKC" -ne "0" ]; then
+        install_ipsw
+        build_kc
+    fi
 }
 
 main "$@"
