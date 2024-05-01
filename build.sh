@@ -132,10 +132,16 @@ install_ipsw() {
 choose_xnu() {
     if [ -z "$MACOS_VERSION" ]; then
         gum style --border normal --margin "1" --padding "1 2" --border-foreground 212 "Choose $(gum style --foreground 212 'macOS') version to build:"
-        MACOS_VERSION=$(gum choose "13.0" "13.1" "13.2" "13.3" "13.4" "13.5" "14.0" "14.1" "14.2" "14.3" "14.4")
+        MACOS_VERSION=$(gum choose "12.5" "13.0" "13.1" "13.2" "13.3" "13.4" "13.5" "14.0" "14.1" "14.2" "14.3" "14.4")
     fi
     TIGHTBEAMC="tightbeamc-not-supported"
     case ${MACOS_VERSION} in
+    '12.5')
+         RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-125/release.json'
+         KDK_NAME='Kernel Debug Kit 12.5 build 21G72'
+         KDKROOT='/Library/Developer/KDKs/KDK_12.5_21G72.kdk'
+         RC_DARWIN_KERNEL_VERSION='22.6.0'
+         ;;
     '13.0')
         RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-130/release.json'
         KDK_NAME='Kernel Debug Kit 13.0 build 22A380'
@@ -261,7 +267,7 @@ patches() {
     if [ "$CODEQL" -eq "0" ]; then
        PATCH_DIR=""
         case ${MACOS_VERSION} in
-        '13.0' | '13.1' | '13.2' | '13.3' | '13.4' | '13.5' | '14.0' | '14.1' | '14.2' | '14.3')
+        '12.5' | '13.0' | '13.1' | '13.2' | '13.3' | '13.4' | '13.5' | '14.0' | '14.1' | '14.2' | '14.3')
             PATCH_DIR="${WORK_DIR}/patches"
             ;;
         '14.4')

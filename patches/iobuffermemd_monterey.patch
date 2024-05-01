@@ -1,0 +1,13 @@
+diff --git a/iokit/Kernel/IOBufferMemoryDescriptor.cpp b/iokit/Kernel/IOBufferMemoryDescriptor.cpp
+index f0d246a7..f1d35835 100644
+--- a/iokit/Kernel/IOBufferMemoryDescriptor.cpp
++++ b/iokit/Kernel/IOBufferMemoryDescriptor.cpp
+@@ -332,7 +332,7 @@ IOBufferMemoryDescriptor::initWithPhysicalMask(
+ 			    KMA_GUARD_LAST | KMA_ZERO);
+
+ 			if (((uint32_t) alignment) != alignment) {
+-				return NULL;
++				return false;
+ 			}
+ 			if (kheap == KHEAP_DATA_BUFFERS) {
+ 				kma_flags = (kma_flags_t) (kma_flags | KMA_DATA);
