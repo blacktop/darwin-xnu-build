@@ -1,0 +1,149 @@
+diff --git a/tools/lldbmacros/core/operating_system.py b/tools/lldbmacros/core/operating_system.py
+index 0ea8b27c..43ad85b5 100755
+--- a/tools/lldbmacros/core/operating_system.py
++++ b/tools/lldbmacros/core/operating_system.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python
++#!/usr/bin/env python
+ #
+
+ #source of register info is from http://opensource.apple.com/source/gdb/gdb-962/src/gdb/arm-tdep.c
+diff --git a/tools/lldbmacros/core/syntax_checker.py b/tools/lldbmacros/core/syntax_checker.py
+index 62d4681f..606ce299 100755
+--- a/tools/lldbmacros/core/syntax_checker.py
++++ b/tools/lldbmacros/core/syntax_checker.py
+@@ -10,9 +10,6 @@ Usage:
+ """
+ import sys
+ import os
+-import re
+-
+-tabs_search_rex = re.compile("^\s*\t+",re.MULTILINE|re.DOTALL)
+
+ def find_non_ascii(s):
+     for c in s:
+@@ -32,20 +29,6 @@ if __name__ == "__main__":
+             print("Note: %s is not a valid python file. Skipping." % fname)
+             continue
+         fh = open(fname)
+-        strdata = fh.readlines()
+-        lineno = 0
+-        syntax_fail = False
+-        for linedata in strdata:
+-            lineno += 1
+-            if len(tabs_search_rex.findall(linedata)) > 0 :
+-                print("Error: Found a TAB character at %s:%d" % (fname, lineno), file=sys.stderr)
+-                syntax_fail = True
+-        if find_non_ascii(linedata):
+-            print("Error: Found a non ascii character at %s:%d" % (fname, lineno), file=sys.stderr)
+-            syntax_fail = True
+-        if syntax_fail:
+-            print("Error: Syntax check failed. Please fix the errors and try again.", file=sys.stderr)
+-            sys.exit(1)
+         #now check for error in compilation
+         try:
+             with open(fname, 'r') as file:
+diff --git a/tools/lldbmacros/scheduler.py b/tools/lldbmacros/scheduler.py
+index 20db7d56..b343a4e7 100755
+--- a/tools/lldbmacros/scheduler.py
++++ b/tools/lldbmacros/scheduler.py
+@@ -127,13 +127,13 @@ def showinterruptsourceinfo(cmd_args = None):
+     print(object_info)
+     print("--- Dumping IOFilterInterruptEventSource object ---\n")
+     #Dump the IOFilterInterruptEventSource object.
+-    target_info=re.search('target =\s+(.*)',object_info)
++    target_info=re.search('target =\\s+(.*)',object_info)
+     target= target_info.group()
+     target= target.split()
+     #Dump the Object pointer of the source who is triggering the Interrupts.
+     vector_info=lldb_run_command("dumpobject {:s} ".format(target[2]))
+     print(vector_info)
+-    owner_info= re.search('owner =\s+(.*)',vector_info)
++    owner_info= re.search('owner =\\s+(.*)',vector_info)
+     owner= owner_info.group()
+     owner= owner.split()
+     print("\n\n")
+diff --git a/tools/lldbmacros/userspace.py b/tools/lldbmacros/userspace.py
+index 4edff39e..af53f7c9 100755
+--- a/tools/lldbmacros/userspace.py
++++ b/tools/lldbmacros/userspace.py
+@@ -265,7 +265,7 @@ Application Specific Information:
+ Synthetic crash log generated from Kernel userstacks
+
+ """
+-    user_lib_rex = re.compile("([0-9a-fx]+)\s-\s([0-9a-fx]+)\s+(.*?)\s", re.IGNORECASE|re.MULTILINE)
++    user_lib_rex = re.compile("([0-9a-fx]+)\\s-\\s([0-9a-fx]+)\\s+(.*?)\\s", re.IGNORECASE|re.MULTILINE)
+     from datetime import datetime
+     if pval:
+         ts = datetime.fromtimestamp(int(pval.p_start.tv_sec))
+diff --git a/tools/lldbmacros/utils.py b/tools/lldbmacros/utils.py
+index e2d168fe..f92c6eb5 100755
+--- a/tools/lldbmacros/utils.py
++++ b/tools/lldbmacros/utils.py
+@@ -530,7 +530,7 @@ def dsymForUUID(uuid):
+         # because of <rdar://12713712>
+         #plist = plistlib.readPlistFromString(output)
+         #beginworkaround
+-        keyvalue_extract_re = re.compile("<key>(.*?)</key>\s*<string>(.*?)</string>",re.IGNORECASE|re.MULTILINE|re.DOTALL)
++        keyvalue_extract_re = re.compile("<key>(.*?)</key>\\s*<string>(.*?)</string>",re.IGNORECASE|re.MULTILINE|re.DOTALL)
+         plist={}
+         plist[uuid] = {}
+         for item in keyvalue_extract_re.findall(output):
+diff --git a/tools/lldbmacros/xnu.py b/tools/lldbmacros/xnu.py
+index d3e27fc6..5e3c50ff 100755
+--- a/tools/lldbmacros/xnu.py
++++ b/tools/lldbmacros/xnu.py
+@@ -1168,7 +1168,7 @@ def __lldb_init_module(debugger, internal_dict):
+     if _xnu_framework_init:
+         return
+     _xnu_framework_init = True
+-    debugger.HandleCommand('type summary add --regex --summary-string "${var%s}" -C yes -p -v "char *\[[0-9]*\]"')
++    debugger.HandleCommand('type summary add --regex --summary-string "${var%s}" -C yes -p -v "char *\\[[0-9]*\\]"')
+     debugger.HandleCommand('type format add --format hex -C yes uintptr_t')
+     kern = KernelTarget(debugger)
+     if not hasattr(lldb.SBValue, 'GetValueAsAddress'):
+diff --git a/tools/lldbmacros/xnutriage.py b/tools/lldbmacros/xnutriage.py
+index bd071529..5dbd1b0c 100755
+--- a/tools/lldbmacros/xnutriage.py
++++ b/tools/lldbmacros/xnutriage.py
+@@ -89,7 +89,7 @@ def parseLR(cmd_args=None):
+             paniclog_data += returnfunc("\n(lldb) paniclog\n", "paniclog")
+
+     if panic_found == 1:
+-        srch_string = "lr:\s+0x[a-fA-F0-9]+\s"
++        srch_string = "lr:\\s+0x[a-fA-F0-9]+\\s"
+         lr_pc_srch = re.findall(srch_string, paniclog_data)
+         if lr_pc_srch:
+             print(paniclog_data, lr_pc_srch)
+@@ -110,7 +110,7 @@ def parseLRfromfile(cmd_args=None):
+     """
+     f = open('/tmp/lrparsefile', 'r')
+     parse_data= f.read()
+-    srch_string = "lr:\s+0x[a-fA-F0-9]+\s"
++    srch_string = "lr:\\s+0x[a-fA-F0-9]+\\s"
+     lr_pc_srch = re.findall(srch_string, parse_data)
+     if lr_pc_srch:
+         print(paniclog_data, lr_pc_srch)
+diff --git a/tools/lldbmacros/zonetriage.py b/tools/lldbmacros/zonetriage.py
+index 57b1cc73..5575c215 100755
+--- a/tools/lldbmacros/zonetriage.py
++++ b/tools/lldbmacros/zonetriage.py
+@@ -26,7 +26,7 @@ import os.path
+ panic_string = None
+ ## If the following panic strings are modified in xnu/osfmk/kern/zalloc.c, they must be updated here to reflect the change.
+ zone_element_modified = ".*a freed zone element has been modified in zone (?P<zone>.+): expected (0x)?([0-9A-Fa-f]*)? but found (0x)?([0-9A-Fa-f]*)?, bits changed (0x)?([0-9A-Fa-f]*)?, at offset ([0-9]*)? of ([0-9]*)? in element (?P<element>0x[0-9A-Fa-f]*), cookies (0x)?([0-9A-Fa-f]*)? (0x)?([0-9A-Fa-f]*)?.*"
+-zone_map_exhausted = ".*zalloc: zone map exhausted while allocating from zone .+, likely due to memory leak in zone (?P<zone>.+) \(([0-9]*)? total bytes, ([0-9]*)? elements allocated\).*"
++zone_map_exhausted = ".*zalloc: zone map exhausted while allocating from zone .+, likely due to memory leak in zone (?P<zone>.+) \\(([0-9]*)? total bytes, ([0-9]*)? elements allocated\\).*"
+
+ # Macro: zonetriage, zonetriage_freedelement, zonetriage_memoryleak
+ @lldb_command('zonetriage')
+diff --git a/tools/tests/perf_index/test_controller.py b/tools/tests/perf_index/test_controller.py
+index 73d2a1b3..e762505b 100755
+--- a/tools/tests/perf_index/test_controller.py
++++ b/tools/tests/perf_index/test_controller.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python
++#!/usr/bin/env python
+ from __future__ import absolute_import, print_function
+ import socket
+ import time

@@ -1,0 +1,96 @@
+diff --git a/iokit/DriverKit/IORPC.h b/iokit/DriverKit/IORPC.h
+index 7ffc6b73..5d49f179 100644
+--- a/iokit/DriverKit/IORPC.h
++++ b/iokit/DriverKit/IORPC.h
+@@ -267,4 +267,6 @@ struct OSClassDescription {
+ 	char        metaMethodNames[0];
+ };
+
++IORPCMessage *IORPCMessageFromMach(IORPCMessageMach * msg, bool reply);
++
+ #endif /* _IORPC_H */
+diff --git a/iokit/DriverKit/IOReturn.h b/iokit/DriverKit/IOReturn.h
+index e36d37b3..71f6b40f 100644
+--- a/iokit/DriverKit/IOReturn.h
++++ b/iokit/DriverKit/IOReturn.h
+@@ -36,6 +36,10 @@
+ #ifndef __IOKIT_IORETURN_H
+ #define __IOKIT_IORETURN_H
+
++#include <IOKit/IORPC.h>
++IORPCMessage *
++IORPCMessageFromMach(IORPCMessageMach * msg, bool reply);
++
+ #ifdef __cplusplus
+ extern "C" {
+ #endif
+diff --git a/iokit/IOKit/IORPC.h b/iokit/IOKit/IORPC.h
+index 7ffc6b73..5d49f179 100644
+--- a/iokit/IOKit/IORPC.h
++++ b/iokit/IOKit/IORPC.h
+@@ -267,4 +267,6 @@ struct OSClassDescription {
+ 	char        metaMethodNames[0];
+ };
+
++IORPCMessage *IORPCMessageFromMach(IORPCMessageMach * msg, bool reply);
++
+ #endif /* _IORPC_H */
+diff --git a/iokit/Kernel/IOUserServer.cpp b/iokit/Kernel/IOUserServer.cpp
+index d61ffd1f..9100d9f1 100644
+--- a/iokit/Kernel/IOUserServer.cpp
++++ b/iokit/Kernel/IOUserServer.cpp
+@@ -2404,7 +2404,7 @@ OSMetaClassBase::Invoke(IORPC rpc)
+ 	IORPCMessage    * message;
+
+ 	assert(rpc.sendSize >= (sizeof(IORPCMessageMach) + sizeof(IORPCMessage)));
+-	message = rpc.kernelContent;
++	message = IORPCMessageFromMach(rpc.message, false);
+ 	if (!message) {
+ 		return kIOReturnIPCError;
+ 	}
+@@ -3630,6 +3630,45 @@ IORPCMessageFromMachReply(IORPCMessageMach * msg)
+ 	return (IORPCMessage *)(uintptr_t) desc;
+ }
+
++IORPCMessage *
++IORPCMessageFromMach(IORPCMessageMach * msg, bool reply)
++{
++	mach_msg_size_t              idx, count;
++	mach_msg_port_descriptor_t * desc;
++	mach_msg_port_descriptor_t * maxDesc;
++	size_t                       size, msgsize;
++	bool                         upgrade;
++
++	msgsize = msg->msgh.msgh_size;
++	count   = msg->msgh_body.msgh_descriptor_count;
++	desc    = &msg->objects[0];
++	maxDesc = (typeof(maxDesc))(((uintptr_t) msg) + msgsize);
++	upgrade = (msg->msgh.msgh_id != (reply ? kIORPCVersionCurrentReply : kIORPCVersionCurrent));
++
++	if (upgrade) {
++		OSReportWithBacktrace("obsolete message");
++		return NULL;
++	}
++
++	for (idx = 0; idx < count; idx++) {
++		if (desc >= maxDesc) {
++			return NULL;
++		}
++		switch (desc->type) {
++		case MACH_MSG_PORT_DESCRIPTOR:
++			size = sizeof(mach_msg_port_descriptor_t);
++			break;
++		case MACH_MSG_OOL_DESCRIPTOR:
++			size = sizeof(mach_msg_ool_descriptor_t);
++			break;
++		default:
++			return NULL;
++		}
++		desc = (typeof(desc))(((uintptr_t) desc) + size);
++	}
++	return (IORPCMessage *)(uintptr_t) desc;
++}
++
+ ipc_port_t
+ IOUserServer::copySendRightForObject(OSObject * object, ipc_kobject_type_t type)
+ {

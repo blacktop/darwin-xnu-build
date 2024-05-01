@@ -224,14 +224,6 @@ choose_xnu() {
     fi
 }
 
-version_lte() {
-    [ "$1" = "$(echo -e "$1\n$2" | sort -V | head -n1)" ]
-}
-
-version_lt() {
-    [ "$1" = "$2" ] && return 1 || version_lte "$1" "$2"
-}
-
 venv() {
     if [ ! -d "${WORK_DIR}/venv" ]; then
         running "Creating virtual environment"
@@ -280,12 +272,14 @@ patches() {
             exit 1
             ;;
         esac
+        cd "${WORK_DIR}/xnu"
         for PATCH in "${PATCH_DIR}"/*.patch; do
-            running "Applying patch: ${PATCH}"
-            if git apply --reverse --check --directory='xnu' "$PATCH" 2> /dev/null; then
-                git apply --directory='xnu' "$PATCH"
+            if git apply --check "$PATCH" 2> /dev/null; then
+                running "Applying patch: ${PATCH}"
+                git apply "$PATCH"
             fi
         done
+        cd "${WORK_DIR}"
     fi
 }
 
@@ -458,6 +452,14 @@ build_xnu() {
     else
         info "📦 XNU kernel.${KERNEL_TYPE} already built"
     fi
+}
+
+version_lte() {
+    [ "$1" = "$(echo -e "$1\n$2" | sort -V | head -n1)" ]
+}
+
+version_lt() {
+    [ "$1" = "$2" ] && return 1 || version_lte "$1" "$2"
 }
 
 build_kc() {
