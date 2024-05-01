@@ -216,7 +216,8 @@ choose_xnu() {
         curl --progress-bar --max-time 900 --connect-timeout 60 -L -o /tmp/KDK.dmg "${KDK_URL}"
         running "Installing KDK"
         hdiutil attach /tmp/KDK.dmg
-        mkdir -p /Library/Developer/KDKs
+        ls -lah /Library/Developer/KDKs
+        sudo mkdir -p /Library/Developer/KDKs
         sudo installer -pkg '/Volumes/Kernel Debug Kit/KernelDebugKit.pkg' -target /Library/Developer/KDKs
         hdiutil detach '/Volumes/Kernel Debug Kit'
         ls -lah /Library/Developer/KDKs
