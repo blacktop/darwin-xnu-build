@@ -210,17 +210,20 @@ choose_xnu() {
         ;;
     esac
     info "Building XNU for macOS ${MACOS_VERSION}"
-    if [ ! -d "$KDKROOT" ]; then
-        KDK_URL=$(curl -s "https://raw.githubusercontent.com/dortania/KdkSupportPkg/gh-pages/manifest.json" | jq -r --arg KDK_NAME "$KDK_NAME" '.[] | select(.name==$KDK_NAME) | .url')
-        running "Downloading '$KDK_NAME' to /tmp"
-        curl --progress-bar --max-time 900 --connect-timeout 60 -L -o /tmp/KDK.dmg "${KDK_URL}"
-        running "Installing KDK"
-        hdiutil attach /tmp/KDK.dmg
-        # ls -lah /Library/Developer/KDKs
-        sudo mkdir -p /Library/Developer/KDKs
-        sudo installer -pkg '/Volumes/Kernel Debug Kit/KernelDebugKit.pkg' -target /Library/Developer/KDKs
-        hdiutil detach '/Volumes/Kernel Debug Kit'
-        ls -lah /Library/Developer/KDKs
+    if [ "$BUILDKC" -ne "0" ]; then
+        if [ ! -d "$KDKROOT" ]; then
+            KDK_URL=$(curl -s "https://raw.githubusercontent.com/dortania/KdkSupportPkg/gh-pages/manifest.json" | jq -r --arg KDK_NAME "$KDK_NAME" '.[] | select(.name==$KDK_NAME) | .url')
+            running "Downloading '$KDK_NAME' to /tmp"
+            curl --progress-bar --max-time 900 --connect-timeout 60 -L -o /tmp/KDK.dmg "${KDK_URL}"
+            running "Installing KDK"
+            hdiutil attach /tmp/KDK.dmg
+            if [ ! -d " /Library/Developer/KDKs" ]; then
+                sudo mkdir -p /Library/Developer/KDKs
+            fi
+            sudo installer -pkg '/Volumes/Kernel Debug Kit/KernelDebugKit.pkg' -target /Library/Developer/KDKs
+            hdiutil detach '/Volumes/Kernel Debug Kit'
+            ls -lah /Library/Developer/KDKs
+        fi
     fi
 }
 
@@ -245,7 +248,7 @@ venv() {
 fetch_release_json() {
     local url=$1
     running "Fetching release.json from $url"
-    curl -s "$url" | jq '{url: "'$url'", data: .}' > "${CACHED_RELEASE}"
+    curl -s "$url" | jq '{url: "'$url'", data: .}' >"${CACHED_RELEASE}"
 }
 
 get_config() {
@@ -281,7 +284,7 @@ patches() {
     # Check for a version-specific patch file
     XNU_VERSION=$(cat "${CACHED_RELEASE}" | jq -r '.data.projects[] | select(.project=="xnu") | .tag')
     if [ -f "version_patches/$XNU_VERSION.patch" ]; then
-        if ! git apply --reverse --check --directory='xnu' version_patches/"$XNU_VERSION".patch 2> /dev/null; then
+        if ! git apply --reverse --check --directory='xnu' version_patches/"$XNU_VERSION".patch 2>/dev/null; then
             git apply --directory='xnu' version_patches/"$XNU_VERSION".patch
             return 0
         fi
@@ -301,7 +304,7 @@ patches() {
     if [ "$CODEQL" -eq "0" ]; then
         cd "${WORK_DIR}/xnu"
         for PATCH in "${WORK_DIR}/patches"/*.patch; do
-            if git apply --check "$PATCH" 2> /dev/null; then
+            if git apply --check "$PATCH" 2>/dev/null; then
                 git apply "$PATCH"
             fi
         done
@@ -310,7 +313,7 @@ patches() {
 }
 
 build_bootstrap_cmds() {
-    if [ ! "$(find "${FAKEROOT_DIR}" -name 'mig' | wc -l )" -gt 0 ]; then
+    if [ ! "$(find "${FAKEROOT_DIR}" -name 'mig' | wc -l)" -gt 0 ]; then
         running "📦 Building bootstrap_cmds"
 
         if [ ! -d "${WORK_DIR}/bootstrap_cmds" ]; then
@@ -324,7 +327,10 @@ build_bootstrap_cmds() {
 
         sed -i '' 's|-o root -g wheel||g' "${WORK_DIR}/bootstrap_cmds/xcodescripts/install-mig.sh"
 
-        CLONED_BOOTSTRAP_VERSION=$(cd "${WORK_DIR}/bootstrap_cmds"; git describe --always 2>/dev/null)
+        CLONED_BOOTSTRAP_VERSION=$(
+            cd "${WORK_DIR}/bootstrap_cmds"
+            git describe --always 2>/dev/null
+        )
 
         cd "${SRCROOT}"
         xcodebuild install -sdk macosx -project mig.xcodeproj ARCHS="arm64 x86_64" CODE_SIGN_IDENTITY="-" OBJROOT="${OBJROOT}" SYMROOT="${SYMROOT}" DSTROOT="${DSTROOT}" RC_ProjectNameAndSourceVersion="${CLONED_BOOTSTRAP_VERSION}"
@@ -333,7 +339,7 @@ build_bootstrap_cmds() {
 }
 
 build_dtrace() {
-    if [ ! "$(find "${FAKEROOT_DIR}" -name 'ctfmerge' | wc -l )" -gt 0 ]; then
+    if [ ! "$(find "${FAKEROOT_DIR}" -name 'ctfmerge' | wc -l)" -gt 0 ]; then
         running "📦 Building dtrace"
         if [ ! -d "${WORK_DIR}/dtrace" ]; then
             DTRACE_VERSION=$(cat "${CACHED_RELEASE}" | jq -r '.data.projects[] | select(.project=="dtrace") | .tag')
@@ -349,7 +355,7 @@ build_dtrace() {
 }
 
 build_availabilityversions() {
-    if [ ! "$(find "${FAKEROOT_DIR}" -name 'availability.pl' | wc -l )" -gt 0 ]; then
+    if [ ! "$(find "${FAKEROOT_DIR}" -name 'availability.pl' | wc -l)" -gt 0 ]; then
         running "📦 Building AvailabilityVersions"
         if [ ! -d "${WORK_DIR}/AvailabilityVersions" ]; then
             AVAILABILITYVERSIONS_VERSION=$(cat "${CACHED_RELEASE}" | jq -r '.data.projects[] | select(.project=="AvailabilityVersions") | .tag')
@@ -493,7 +499,7 @@ build_kc() {
                 -B "${DSTROOT}/oss-xnu.macOS.${MACOS_VERSION}.kc.$(echo "$MACHINE_CONFIG" | tr '[:upper:]' '[:lower:]')" \
                 -k "${BUILD_DIR}/xnu.obj/kernel.${KERNEL_TYPE}" \
                 -x $(ipsw kernel kmutil inspect -x --filter "${KC_FILTER}") # this will skip KC_FILTER regex (and other KEXTs with them as dependencies)
-                # -x $(kmutil inspect -V release --no-header | grep apple | grep -v "SEPHibernation" | awk '{print " -b "$1; }')
+            # -x $(kmutil inspect -V release --no-header | grep apple | grep -v "SEPHibernation" | awk '{print " -b "$1; }')
         else
             kmutil create -v -V "${KC_VARIANT}" -a x86_64 -n boot sys -s none \
                 ${KDK_FLAG} \
@@ -502,7 +508,7 @@ build_kc() {
                 -k "${BUILD_DIR}/xnu.obj/kernel.${KERNEL_TYPE}" \
                 --elide-identifier com.apple.ExclaveKextClient \
                 -x $(ipsw kernel kmutil inspect -x --filter "${KC_FILTER}") # this will skip KC_FILTER regex (and other KEXTs with them as dependencies)
-                # -x $(kmutil inspect -V release --no-header | grep apple | grep -v "SEPHibernation" | awk '{print " -b "$1; }')
+            # -x $(kmutil inspect -V release --no-header | grep apple | grep -v "SEPHibernation" | awk '{print " -b "$1; }')
         fi
         echo "  🎉 KC Build Done!"
     fi
