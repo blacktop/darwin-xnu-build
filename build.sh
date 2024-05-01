@@ -219,6 +219,8 @@ choose_xnu() {
         sudo installer -pkg '/Volumes/Kernel Debug Kit/KernelDebugKit.pkg' -target /
         hdiutil detach '/Volumes/Kernel Debug Kit'
         ls -lah /Library/Developer/KDKs
+        ls -lah /
+        find / -type d -name "KDK_14.4_23E214.kdk"
     fi
 }
 
