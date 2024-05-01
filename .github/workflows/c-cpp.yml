@@ -65,7 +65,7 @@ jobs:
           name: xnu-build-${{ matrix.macos-version }}
           path: |
             fakeroot/System/Library/Kernels/
-            fakeroot/oss-xnu.macOS.${{ matrix.macos-version }}.kc.vmapple
+            # fakeroot/oss-xnu.macOS.${{ matrix.macos-version }}.kc.vmapple
 
       - name: Build XNU CodeQL Database
         run: |
