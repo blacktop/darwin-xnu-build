@@ -1,0 +1,1597 @@
+diff --git a/EXTERNAL_HEADERS/CoreEntitlements/CoreEntitlements.h b/EXTERNAL_HEADERS/CoreEntitlements/CoreEntitlements.h
+index 60e7e8f9..001dfff2 100644
+--- a/EXTERNAL_HEADERS/CoreEntitlements/CoreEntitlements.h
++++ b/EXTERNAL_HEADERS/CoreEntitlements/CoreEntitlements.h
+@@ -5,6 +5,11 @@
+ #ifndef CORE_ENTITLEMENTS_H
+ #define CORE_ENTITLEMENTS_H
+ 
++#define kCSWebBrowserNetworkEntitlement (("com.apple.developer.web-browser-engine.networking"))
++#define kCSWebBrowserWebContentEntitlement (("com.apple.developer.web-browser-engine.webcontent"))
++#define kCSWebBrowserGPUEntitlement (("com.apple.developer.web-browser-engine.rendering"))
++#define kCSWebBrowserHostEntitlement (("com.apple.developer.web-browser-engine.host"))
++
+ #ifdef __cplusplus
+ extern "C" {
+ #endif
+diff --git a/EXTERNAL_HEADERS/TrustCache/API.h b/EXTERNAL_HEADERS/TrustCache/API.h
+new file mode 100644
+index 00000000..d13cddf3
+--- /dev/null
++++ b/EXTERNAL_HEADERS/TrustCache/API.h
+@@ -0,0 +1,188 @@
++#ifndef libTrustCache_API_h
++#define libTrustCache_API_h
++
++#include <sys/cdefs.h>
++__BEGIN_DECLS
++
++#include <stdint.h>
++#include <stdbool.h>
++#include <img4/firmware.h>
++#include <TrustCache/RawTypes.h>
++#include <TrustCache/Types.h>
++#include <TrustCache/TypesConfig.h>
++#include <TrustCache/Return.h>
++
++/**
++ * NOTE: This library does not enforce any concurrency by itself. To be safe in a multi-threaded
++ * environment, the caller must manually enforce concurrency on the runtime data structure as
++ * otherwise the library is susceptible to memory corruption from race conditions.
++ */
++
++/**
++ * Initialize a runtime to the default values.
++ *
++ * If the system supports read-only segments, and the runtime is allocated within the read-only
++ * segment, then this function needs to be called before the segment is enforced to be read-only.
++ * For more information, please look at <TrustCache/Types.h>.
++ */
++static inline void
++trustCacheInitializeRuntime(TrustCacheRuntime_t *runtime,
++                            TrustCacheMutableRuntime_t *mutableRT,
++                            bool allowSecondStaticTC,
++                            bool allowEngineeringTC,
++                            bool allowLegacyTC,
++                            const img4_runtime_t *image4RT)
++{
++    /* Zero out everything */
++    memset(runtime, 0, sizeof(*runtime));
++    memset(mutableRT, 0, sizeof(*mutableRT));
++
++    /* Set the mutable runtime pointer */
++    runtime->mutableRT = mutableRT;
++
++    /* Setup trust cache type permissions */
++    runtime->allowSecondStaticTC = allowSecondStaticTC;
++    runtime->allowEngineeringTC = allowEngineeringTC;
++    runtime->allowLegacyTC = allowLegacyTC;
++
++    /* Set the image4 runtime */
++    runtime->image4RT = image4RT;
++}
++
++/**
++ * Construct a trust cache object from some module bytes. The module is validated for
++ * correctness before being returned.
++ */
++TCReturn_t
++trustCacheConstructInvalid(TrustCache_t *trustCache,
++                           const uint8_t *moduleAddr,
++                           size_t moduleSize);
++
++/**
++ * Check the runtime for a trust cache which matches a particular UUID. Since we do
++ * not allow trust caches with duplocate UUIDs, there can only ever be a single trust
++ * cache with a particular UUID within the runtime.
++ */
++TCReturn_t
++trustCacheCheckRuntimeForUUID(const TrustCacheRuntime_t *runtime,
++                              const uint8_t checkUUID[kUUIDSize],
++                              const TrustCache_t **trustCacheRet);
++
++/**
++ * Add a trust cache module directly to the runtime. This function is used to add modules which
++ * don't need to be separately authenticated. Currently, the only trust cache types which can be
++ * used with this function are static and engineering trust caches.
++ *
++ * If the system supports read-only segments, and the runtime is allocated within the read-only
++ * segment, then this function needs to be called before the segment is enforced to be read-only.
++ * For more information, please look at <TrustCache/Types.h>.
++ */
++TCReturn_t
++trustCacheLoadModule(TrustCacheRuntime_t *runtime,
++                     const TCType_t type,
++                     TrustCache_t *trustCache,
++                     const uintptr_t dataAddr,
++                     const size_t dataSize);
++
++/**
++ * Load a trust cache onto the system. This function validates the trust cache for a proper
++ * signature and adds it to the runtime.
++ *
++ * Both the payload and the manifest must be provided and they will be validated as image4
++ * objects.
++ */
++TCReturn_t
++trustCacheLoad(TrustCacheRuntime_t *runtime,
++               TCType_t type,
++               TrustCache_t *trustCache,
++               const uintptr_t payloadAddr,
++               const size_t payloadSize,
++               const uintptr_t manifestAddr,
++               const size_t manifestSize);
++
++/**
++ * Extract an image4 artifact from an image4 file or an image4 payload and extract the
++ * trust cache module embedded within it. The module is validated for correctness
++ * before being returned, however the image4 signature is not verified.
++ *
++ * The returned trust cache object is marked with an invalid type.
++ */
++TCReturn_t
++trustCacheExtractModule(TrustCache_t *trustCache,
++                        const uint8_t *dataAddr,
++                        size_t dataSize);
++
++/**
++ * Query a  trust cache for a particular CDHash. The returned token can then be used to
++ * query further attributes from the matched entry.
++ */
++TCReturn_t
++trustCacheQuery(const TrustCacheRuntime_t *runtime,
++                TCQueryType_t queryType,
++                const uint8_t CDHash[kTCEntryHashSize],
++                TrustCacheQueryToken_t *queryToken);
++
++/**
++ * Get the module bytes backng a trust cache object. The environment may have chosen
++ * to allocate the module bytes within read-only memory, so the bytes returned may
++ * not be mutable.
++ */
++TCReturn_t
++trustCacheGetModule(const TrustCache_t *trustCache,
++                    const uint8_t **moduleAddrRet,
++                    size_t *moduleSizeRet);
++
++/**
++ * Get the UUID of the trust cache module represented by the wrapped trust cache object.
++ */
++TCReturn_t
++trustCacheGetUUID(const TrustCache_t *trustCache,
++                  uint8_t returnUUID[kUUIDSize]);
++
++/**
++ * Get the capabilities of a trust cache. This function can be used to query which fields a given
++ * trust cache supports.
++ *
++ * The fields which are supported are based on the version of the trust cache module.
++ */
++TCReturn_t
++trustCacheGetCapabilities(const TrustCache_t *trustCache,
++                          TCCapabilities_t *capabilities);
++
++/**
++ * Acquire the trust cache type for a query token.
++ */
++TCReturn_t
++trustCacheQueryGetTCType(const TrustCacheQueryToken_t *queryToken,
++                         TCType_t *typeRet);
++
++/**
++ * Acquire the capabilities of the trust cache through a query token.
++ */
++TCReturn_t
++trustCacheQueryGetCapabilities(const TrustCacheQueryToken_t *queryToken,
++                               TCCapabilities_t *capabilities);
++
++/**
++ * Acquire the hash type for the CDHash through a query token.
++ */
++TCReturn_t
++trustCacheQueryGetHashType(const TrustCacheQueryToken_t *queryToken,
++                           uint8_t *hashTypeRet);
++
++/**
++ * Acquire the flags for a trust cache entry through a query token.
++ */
++TCReturn_t
++trustCacheQueryGetFlags(const TrustCacheQueryToken_t *queryToken,
++                        uint64_t *flagsRet);
++
++/**
++ * Acquire the constraint category for a trust cache entry through a query token.
++ */
++TCReturn_t
++trustCacheQueryGetConstraintCategory(const TrustCacheQueryToken_t *queryToken,
++                                     uint8_t *constraintCategoryRet);
++
++__END_DECLS
++#endif /* libTrustCache_API_h */
+diff --git a/EXTERNAL_HEADERS/TrustCache/RawTypes.h b/EXTERNAL_HEADERS/TrustCache/RawTypes.h
+new file mode 100644
+index 00000000..16b684e2
+--- /dev/null
++++ b/EXTERNAL_HEADERS/TrustCache/RawTypes.h
+@@ -0,0 +1,103 @@
++#ifndef libTrustCache_RawTypes_h
++#define libTrustCache_RawTypes_h
++
++#include <sys/cdefs.h>
++__BEGIN_DECLS
++
++#include <stdint.h>
++#include <corecrypto/ccsha1.h>
++
++/*
++ * CDHashes in the trust cache are always truncated to the length of a SHA1 hash.
++ */
++#define kTCEntryHashSize CCSHA1_OUTPUT_SIZE
++
++/* UUIDs are always 16 bytes */
++#define kUUIDSize 16
++
++/* Versions supported by the library */
++enum {
++    kTCVersion0 = 0x0,
++    kTCVersion1 = 0x1,
++    kTCVersion2 = 0x2,
++
++    kTCVersionTotal,
++};
++
++/* Flags for the trust cache look ups */
++enum {
++    kTCFlagAMFID = 0x01,
++    kTCFlagANEModel = 0x02,
++};
++
++typedef struct _TrustCacheModuleBase {
++    /* The version for this trust cache module */
++    uint32_t version;
++} __attribute__((packed)) TrustCacheModuleBase_t;
++
++#pragma mark Trust Cache Version 0
++
++typedef uint8_t TrustCacheEntry0_t[kTCEntryHashSize];
++
++typedef struct _TrustCacheModule0 {
++    /* Must be 0 */
++    uint32_t version;
++
++    /* ID which uniquely identifies the trust cache */
++    uint8_t uuid[kUUIDSize];
++
++    /* The number of entries present in the trust cache */
++    uint32_t numEntries;
++
++    /* Dynamic data containing all the entries */
++    TrustCacheEntry0_t entries[0];
++} __attribute__((packed)) TrustCacheModule0_t;
++
++#pragma mark Trust Cache Version 1
++
++typedef struct _TrustCacheEntry1 {
++    uint8_t CDHash[kTCEntryHashSize];
++    uint8_t hashType;
++    uint8_t flags;
++} __attribute__((packed)) TrustCacheEntry1_t;
++
++typedef struct _TrustCacheModule1 {
++    /* Must be 1 */
++    uint32_t version;
++
++    /* ID which uniquely identifies the trust cache */
++    uint8_t uuid[kUUIDSize];
++
++    /* The number of entries present in the trust cache */
++    uint32_t numEntries;
++
++    /* Dynamic data containing all the entries */
++    TrustCacheEntry1_t entries[0];
++} __attribute__((packed)) TrustCacheModule1_t;
++
++#pragma mark Trust Cache Version 2
++
++typedef struct _TrustCacheEntry2 {
++    uint8_t CDHash[kTCEntryHashSize];
++    uint8_t hashType;
++    uint8_t flags;
++    uint8_t constraintCategory;
++    uint8_t reserved0;
++} __attribute__((packed)) TrustCacheEntry2_t;
++
++typedef struct _TrustCacheModule2 {
++    /* Must be 2 */
++    uint32_t version;
++
++    /* ID which uniquely identifies the trust cache */
++    uint8_t uuid[kUUIDSize];
++
++    /* The number of entries present in the trust cache */
++    uint32_t numEntries;
++
++    /* Dynamic data containing all the entries */
++    TrustCacheEntry2_t entries[0];
++} __attribute__((packed)) TrustCacheModule2_t;
++
++__END_DECLS
++#endif /* libTrustCache_RawTypes_h */
+diff --git a/EXTERNAL_HEADERS/TrustCache/Return.h b/EXTERNAL_HEADERS/TrustCache/Return.h
+new file mode 100644
+index 00000000..440a53c4
+--- /dev/null
++++ b/EXTERNAL_HEADERS/TrustCache/Return.h
+@@ -0,0 +1,123 @@
++#ifndef libTrustCache_Return_h
++#define libTrustCache_Return_h
++
++#include <sys/cdefs.h>
++__BEGIN_DECLS
++
++#include <stdint.h>
++
++/* Components which can return information from the library */
++enum {
++    kTCComponentLoadModule = 0x00,
++    kTCComponentLoad = 0x01,
++    kTCComponentImage4Validate = 0x02,
++    kTCComponentImage4Callback = 0x03,
++    kTCComponentConstructInvalid = 0x04,
++    kTCComponentCheckRuntimeForUUID = 0x05,
++    kTCComponentExtractModule = 0x06,
++    kTCComponentGetUUID = 0x07,
++    kTCComponentGetModule = 0x08,
++
++    /* Query Functions */
++    kTCComponentQuery = 0x10,
++    kTCComponentQueryChain = 0x11,
++    kTCComponentQueryRuntime = 0x12,
++    kTCComponentQueryTCType = 0x13,
++    kTCComponentQueryHashType = 0x14,
++    kTCComponentQueryFlags = 0x15,
++    kTCComponentQueryConstraintCategory = 0x16,
++
++    /* Module based */
++    kTCComponentQueryModule = 0x40,
++    kTCComponentValidateModule = 0x41,
++    kTCComponentQueryModule0 = 0x42,
++    kTCComponentValidateModule0 = 0x43,
++    kTCComponentQueryModule1 = 0x44,
++    kTCComponentValidateModule1 = 0x45,
++    kTCComponentQueryModule2 = 0x46,
++    kTCComponentValidateModule2 = 0x47,
++    kTCComponentModuleCapabilities = 0x48,
++
++    /* Other functions which can return a value */
++    kTCComponentLinkedListAddHead = 0x80,
++    kTCComponentLinkedListRemove = 0x81,
++    kTCComponentExtractImage4Payload = 0x82,
++
++    /* Cannot exceed this value */
++    kTCComponentTotal = 0xFF,
++};
++
++/* Error types which can be returned from the library */
++enum {
++    kTCReturnSuccess = 0x00,
++
++    /* Generic error condition - avoid using this */
++    kTCReturnError = 0x01,
++
++    /* Specific error conditions */
++    kTCReturnOverflow = 0x20,
++    kTCReturnUnsupported = 0x21,
++    kTCReturnInvalidModule = 0x22,
++    kTCReturnDuplicate = 0x23,
++    kTCReturnNotFound = 0x24,
++    kTCReturnInvalidArguments = 0x25,
++    kTCReturnInsufficientLength = 0x26,
++    kTCReturnNotPermitted = 0x27,
++    kTCReturnLinkedListCorrupted = 0x28,
++
++    /* Image 4 return errors */
++    kTCReturnImage4Expired = 0xA0,
++    kTCReturnImage4UnknownFormat = 0xA1,
++    kTCReturnImage4WrongObject = 0xA2,
++    kTCReturnImage4WrongCrypto = 0xA3,
++    kTCReturnImage4ManifestViolation = 0xA4,
++    kTCReturnImage4PayloadViolation = 0xA5,
++    kTCReturnImage4PermissionDenied = 0xA6,
++    kTCReturnImage4NoChipAvailable = 0xA7,
++    kTCReturnImage4NoNonceAvailable = 0xA8,
++    kTCReturnImage4NoDeviceAvailable = 0xA9,
++    kTCReturnImage4DecodeError = 0xAA,
++    kTCReturnImage4UnknownError = 0xAF,
++
++    /* Cannot exceed this value */
++    kTCReturnTotal = 0xFF
++};
++
++typedef struct _TCReturn {
++    union {
++        /* Raw 32 bit representation of the return code */
++        uint32_t rawValue;
++
++        /* Formatted representation of the return code */
++        struct {
++            /* Component of the library which is returning the code */
++            uint8_t component;
++
++            /* Error code which is being returned */
++            uint8_t error;
++
++            /* Unique error path within the component */
++            uint16_t uniqueError;
++        } __attribute__((packed));
++    } __attribute__((packed));
++} __attribute__((packed)) TCReturn_t;
++
++/* Ensure the size of the structure remains as expected */
++_Static_assert(sizeof(TCReturn_t) == sizeof(uint32_t), "TCReturn_t is not 32 bits large");
++
++static inline TCReturn_t
++buildTCRet(uint8_t component,
++           uint8_t error,
++           uint16_t uniqueError)
++{
++    TCReturn_t ret = {
++        .component = component,
++        .error = error,
++        .uniqueError = uniqueError
++    };
++
++    return ret;
++}
++
++__END_DECLS
++#endif /* libTrustCache_Return_h */
+diff --git a/EXTERNAL_HEADERS/TrustCache/Types.h b/EXTERNAL_HEADERS/TrustCache/Types.h
+new file mode 100644
+index 00000000..f3412f38
+--- /dev/null
++++ b/EXTERNAL_HEADERS/TrustCache/Types.h
+@@ -0,0 +1,320 @@
++#ifndef libTrustCache_Types_h
++#define libTrustCache_Types_h
++
++#include <sys/cdefs.h>
++__BEGIN_DECLS
++
++#include <stdint.h>
++#include <img4/firmware.h>
++#include <TrustCache/RawTypes.h>
++
++typedef uint8_t TCType_t;
++enum {
++    /*
++     * These types of trust caches are always loaded as modules. Their validation
++     * is done externally by upper-level software.
++     *
++     * Static trust caches are bundled with the operating system and are the primary
++     * method of denoting platform trust. Engineering trust caches are similar to
++     * static trust caches except that they can be created by engineers at their
++     * desk as a root for a static trust cache. Legacy trust caches are image3 signed
++     * modules. This library does not support validating image3 signatures, so it
++     * accepts the trust caches only as direct modules. These are still considered
++     * loadable trust caches.
++     */
++    kTCTypeStatic = 0x00,
++    kTCTypeEngineering = 0x01,
++    kTCTypeLegacy = 0x02,
++
++    /*
++     * Do NOT change the order of the types listed here. This header is shared across
++     * a variety of projects and they update at different cadences. Adding a new type
++     * requires appending to the end of the enumeration, instead of insertion in the
++     * middle somewhere.
++     */
++
++    /*
++     * Type: Personalized
++     * These are engineering roots which are only ever valid for development devices.
++     * These can be created by engineers at their desks for testing software.
++     */
++    kTCTypeDTRS = 0x03,
++
++    /*
++     * Type: Personalized
++     * These are loadable trust caches which are viable for all kinds of devices and
++     * can be used for testing, but also for shipping code in production devices.
++     */
++    kTCTypeLTRS = 0x04,
++
++    /*
++     * Type: Personalized
++     * Used by disk images which are used to supply platform code for a number of use
++     * cases, including the multidude of disk images supplied for engineering use-cases
++     * such as the factoey disk image.
++     */
++    kTCTypePersonalizedDiskImage = 0x05,
++
++    /*
++     * Type: Categorized
++     * Developer disk images which are personalized per device. These have a different
++     * tag than standard loadable trust caches and helps differentiate them. However,
++     * these were never productionized and are for all purposes, retired.
++     */
++    kTCTypeDeveloperDiskImage = 0x06,
++
++    /*
++     * Type: Personalized
++     * These trust caches are similar to a personalized LTRS trust cache type except
++     * they are personalized against a long lived nonce, allowing these to remain
++     * useable across reboots of the system.
++     */
++    kTCTypeLTRSWithDDINonce = 0x07,
++
++    /*
++     * Type: Personalized
++     * These trust cache types are used to authenticate code shipped in Cryptexes for
++     * security research devices. Outside of the SRD, these are also used in some data
++     * center use cases which deploy code through Cryptexes.
++     */
++    kTCTypeCryptex = 0x08,
++
++    /*
++     * Type: Personalized (against supplemental root)
++     * These are special trust caches which validate against a supplemental root beyond
++     * Tatsu. These are only meant for special deployments within some data centers.
++     *
++     * NOTE: This type is deprecated in favor of the newer Supplemental Persistent
++     * and Supplemental Ephemeral types.
++     */
++    kTCTypeEphemeralCryptex = 0x09,
++
++    /*
++     * Type: Global
++     * OTA updates ship an update brain to assist with the OS update. The brain is some
++     * code with platform privileges which can do whatever the current OS needs it to do
++     * in order to update the system.
++     */
++    kTCTypeUpdateBrain = 0x0A,
++
++    /*
++     * Type: Global
++     * Trust caches which are loaded by the Install Assistant on macOS in order to help
++     * with installing macOS.
++     */
++    kTCTypeInstallAssistant = 0x0B,
++
++    /*
++     * Type: Global
++     * These are used by macOS systems to ship a bootability brain. The bootability brain
++     * is a piece of code which helps determine if macOS systems of a different version
++     * are bootable or not. The brain is useful because the logic for determining that a
++     * system is bootable or not differs with each release.
++     */
++    kTCTypeBootabilityBrain = 0x0C,
++
++    /*
++     * Type: Personalized (against Cryptex 1 Boot/Preboot environments)
++     * These trust cache types are used by SPLAT at different stages of the boot pipeline
++     * for loading code responsible for system boot up, such as the shared cache.
++     *
++     * The personalization uses a Cryptex1 nonce domain, which is embedded within the
++     * manifest itself.
++     */
++    kTCTypeCryptex1BootOS = 0x0D,
++    kTCTypeCryptex1BootApp = 0x0E,
++    kTCTypeCryptex1PreBootApp = 0x0F,
++
++    /*
++     * Type: Global
++     * These are disk images which are globally signed against the FF00 chip environment.
++     * They are used when disk images want to supply code for devices across the fleet
++     * without requiring individual personalization for each.
++     *
++     * The developer disk image is supplied through this mechanism as well, as of January
++     * 5th, 2022.
++     */
++    kTCTypeGlobalDiskImage = 0x10,
++
++    /*
++     * Type: Personalized (Cryptex1 mobile asset brain)
++     * The mobile asset brain contains the core logic for mobileassetd, which is a system
++     * daemon responsible for downloading and maintaining assets on the device. The brain
++     * is meant to be back-deployable, which is what the trust cache helps with.
++     *
++     * The personalization uses a Cryptex1 nonce domain, which is embedded within the
++     * manifest itself.
++     */
++    kTCTypeMobileAssetBrain = 0x11,
++
++    /*
++     * Type: Personalized (Cryptex1 boot reduced)
++     * Safari is backported to older builds. Since Safari is now moving to a SPLAT based
++     * mount volume, we need to support loading a trust cache which is used to mount and
++     * run Safari from the future.
++     *
++     * The personalization uses a Cryptex1 nonce domain, which is embedded within the
++     * manifest itself.
++     */
++    kTCTypeSafariDownlevel = 0x12,
++
++    /*
++     * Type: Personalized (Cryptex 1 Preboot)
++     * This trust cache type is used for the semi-SPLAT use-case for loading the new dyld
++     * shared cache onto the platform, along with some other system libraries. This is
++     * only required for macOS.
++     *
++     * The personalization uses a Cryptex1 nonce domain, which is embedded within the
++     * manifest itself.
++     */
++    kTCTypeCryptex1PreBootOS = 0x13,
++
++    /*
++     * Type: Personalized (Supplemental Root)
++     * Persistent trust caches which are signed by an authority different from Tatsu.
++     * These are only required for deployment on darwinOS platforms.
++     */
++    kTCTypeSupplementalPersistent = 0x14,
++
++    /*
++     * Type: Personalized (Supplemental Root)
++     * Ephemeral trust caches which are signed by an authority different from Tatsu.
++     * These are only required for deployment on darwinOS platforms.
++     */
++    kTCTypeSupplementalEphemeral = 0x15,
++
++    /*
++     * Type: Personalized (Cryptex1 Generic)
++     * This type can be used by the assortment of PDIs we ship. Each PDI train can opt
++     * into allocating a Cryptex1 sub-type for itself, and then ship on the OS being
++     * signed by the Cryptex1 generic environment. This allows the PDI to adopt Cryptex1
++     * personalization without requiring a new bespoke trust cache type.
++     *
++     * The personalization uses a Cryptex1 nonce domain, which is embedded within the
++     * manifest itself.
++     */
++    kTCTypeCryptex1Generic = 0x16,
++
++    /*
++     * Type: Personalized (Cryptex1 Generic Supplemental)
++     * Similar to the kTCTypeCryptex1Generic type except the manifest is signed by the
++     * supplemental root of trust. Only viable for some data center use-cases.
++     *
++     * The personalization uses a Cryptex1 nonce domain, which is embedded within the
++     * manifest itself.
++     */
++    kTCTypeCryptex1GenericSupplemental = 0x17,
++
++    kTCTypeTotal,
++
++    /* Invalid type */
++    kTCTypeInvalid = 0xFF,
++};
++
++/* Availability macros for different trust cache types */
++#define kLibTrustCacheHasCryptex1BootOS 1
++#define kLibTrustCacheHasCryptex1BootApp 1
++#define kLibTrustCacheHasCryptex1PreBootApp 1
++#define kLibTrustCacheHasMobileAssetBrain 1
++#define kLibTrustCacheHasSafariDownlevel 1
++#define kLibTrustCacheHasCryptex1PreBootOS 1
++#define kLibTrustCacheHasSupplementalPersistent 1
++#define kLibTrustCacheHasSupplementalEphemeral 1
++#define kLibTrustCacheHasCryptex1Generic 1
++#define kLibTrustCacheHasCryptex1GenericSupplemental 1
++
++typedef struct _TrustCache {
++    /* Linked list linkage for the trust cache */
++    struct _TrustCache *next;
++    struct _TrustCache *prev;
++
++    /* The type of this trust cache */
++    TCType_t type;
++
++    /* TODO: Add reference counts when we support unloading */
++
++    /* The trust cache module itself */
++    size_t moduleSize;
++    const TrustCacheModuleBase_t *module;
++} TrustCache_t;
++
++typedef uint8_t TCQueryType_t;
++enum {
++    /* Query all types of trust caches in the runtime */
++    kTCQueryTypeAll = 0x00,
++
++    /* Static query type includes engineering trust caches */
++    kTCQueryTypeStatic = 0x01,
++
++    /* Most first party trust cache types are loadable ones */
++    kTCQueryTypeLoadable = 0x02,
++
++    kTCQueryTypeTotal,
++};
++
++typedef uint64_t TCCapabilities_t;
++enum {
++    /* Supports no capabilities */
++    kTCCapabilityNone = 0,
++
++    /* Supports the hash type field */
++    kTCCapabilityHashType = (1 << 0),
++
++    /* Supports the flags field */
++    kTCCapabilityFlags = (1 << 1),
++
++    /* Supports the constraints category field */
++    kTCCapabilityConstraintsCategory = (1 << 2),
++};
++
++typedef struct _TrustCacheQueryToken {
++    /* Trust cache where query was found */
++    const TrustCache_t *trustCache;
++
++    /* Entry within the trust cache where query was found */
++    const void *trustCacheEntry;
++} TrustCacheQueryToken_t;
++
++/*
++ * The runtime data structure is setup in a very special way. To make use of HW mitigations
++ * offered by the silicon, the runtime can be placed in a region which is locked down by the
++ * HW at some commit point. This theoretically allows the static and the engineering trust
++ * caches to be locked down and immutable if the storage for the trust cache data structure
++ * is also allocated within this same immutable memory segment.
++ *
++ * At the same time, we need to be able to support dynamically loaded trust caches on the
++ * system. We can't keep a list head within the runtime for these trust caches, since that
++ * head will be locked down when the runtime is locked, preventing us from adding a new link
++ * in the chain. To solve this, the runtime instead stores a pointer to a wrapped data structure.
++ * This pointer itself is locked down and can't be changed, but the contents of the wrapped
++ * structure are mutable, making it a good place to store the linked list head.
++ */
++
++/* Data structure expected to be stored within mutable memory */
++typedef struct _TrustCacheMutableRuntime {
++    /* Loadable trust caches on the system */
++    TrustCache_t *loadableTCHead;
++} TrustCacheMutableRuntime_t;
++
++/* Data structure expected to be stored within immutable memory */
++typedef struct _TrustCacheRuntime {
++    /* Runtime to use for image 4 object verification */
++    const img4_runtime_t *image4RT;
++
++    /* Configuration for trust cache types */
++    bool allowSecondStaticTC;
++    bool allowEngineeringTC;
++    bool allowLegacyTC;
++
++    /* Static trust cache for the system */
++    TrustCache_t *staticTCHead;
++
++    /* Engineering trust caches for the system */
++    TrustCache_t *engineeringTCHead;
++
++    /* Mutable runtime instance */
++    TrustCacheMutableRuntime_t *mutableRT;
++} TrustCacheRuntime_t;
++
++__END_DECLS
++#endif /* libTrustCache_Types_h */
+diff --git a/EXTERNAL_HEADERS/TrustCache/TypesConfig.h b/EXTERNAL_HEADERS/TrustCache/TypesConfig.h
+new file mode 100644
+index 00000000..d93e8b09
+--- /dev/null
++++ b/EXTERNAL_HEADERS/TrustCache/TypesConfig.h
+@@ -0,0 +1,389 @@
++#ifndef libTrustCache_TypesConfig_h
++#define libTrustCache_TypesConfig_h
++
++#include <sys/cdefs.h>
++__BEGIN_DECLS
++
++#include <TrustCache/Types.h>
++
++#if XNU_KERNEL_PRIVATE
++/*
++ * The AppleImage4 API definitions are accessed through the 'img4if' indirection
++ * layer within XNU itself. Kernel extensions can access them directly from the
++ * AppleImage4 headers.
++ */
++#include <libkern/img4/interface.h>
++#endif
++
++#if !XNU_KERNEL_PRIVATE
++/*
++ * XNU does not make this header available and uses different availability macros
++ * than kernel extensions or base user-space applications.
++ */
++#include <TargetConditionals.h>
++#endif
++
++#pragma mark Chip Environments
++
++static const img4_chip_t*
++chipEnvironmentPersonalized(void) {
++    return img4_chip_select_personalized_ap();
++}
++
++static const img4_chip_t*
++chipEnvironmentCategorized(void) {
++    return img4_chip_select_categorized_ap();
++}
++
++static const img4_chip_t*
++chipEnvironmentGlobalFF00(void) {
++    return IMG4_CHIP_AP_SOFTWARE_FF00;
++}
++
++static const img4_chip_t*
++chipEnvironmentGlobalFF01(void) {
++    return IMG4_CHIP_AP_SOFTWARE_FF01;
++}
++
++static const img4_chip_t*
++chipEnvironmentGlobalFF06(void) {
++    return IMG4_CHIP_AP_SOFTWARE_FF06;
++}
++
++static const img4_chip_t*
++chipEnvironmentEphemeralCryptex(void) {
++    return IMG4_CHIP_AP_SUPPLEMENTAL;
++}
++
++static const img4_chip_t*
++chipEnvironmentCryptex1Boot(void) {
++#if IMG4_API_VERSION >= 20211126
++    return img4_chip_select_cryptex1_boot();
++#else
++    return NULL;
++#endif
++}
++
++static const img4_chip_t*
++chipEnvironmentCryptex1PreBoot(void) {
++#if IMG4_API_VERSION >= 20211126
++    return img4_chip_select_cryptex1_preboot();
++#else
++    return NULL;
++#endif
++}
++
++static const img4_chip_t*
++chipEnvironmentCryptex1MobileAsset(void) {
++#if IMG4_API_VERSION >= 20211126
++    return IMG4_CHIP_CRYPTEX1_ASSET;
++#else
++    return NULL;
++#endif
++}
++
++static const img4_chip_t*
++chipEnvironmentSafariDownlevel(void) {
++#if IMG4_API_VERSION >= 20211126
++    return IMG4_CHIP_CRYPTEX1_BOOT_REDUCED;
++#else
++    return NULL;
++#endif
++}
++
++static const img4_chip_t*
++chipEnvironmentSupplemental(void) {
++    return IMG4_CHIP_AP_SUPPLEMENTAL;
++}
++
++static const img4_chip_t*
++chipEnvironmentCryptex1Generic(void) {
++#if IMG4_API_VERSION >= 20221202
++    return IMG4_CHIP_CRYPTEX1_GENERIC;
++#else
++    return NULL;
++#endif
++}
++
++static const img4_chip_t*
++chipEnvironmentCryptex1GenericSupplemental(void) {
++#if IMG4_API_VERSION >= 20221202
++    return IMG4_CHIP_CRYPTEX1_GENERIC_SUPPLEMENTAL;
++#else
++    return NULL;
++#endif
++}
++
++#pragma mark Nonce Domains
++
++static const img4_nonce_domain_t*
++nonceDomainTrustCache(void) {
++    return IMG4_NONCE_DOMAIN_TRUST_CACHE;
++}
++
++static const img4_nonce_domain_t*
++nonceDomainDDI(void) {
++    return IMG4_NONCE_DOMAIN_DDI;
++}
++
++static const img4_nonce_domain_t*
++nonceDomainCryptex(void) {
++    return IMG4_NONCE_DOMAIN_CRYPTEX;
++}
++
++static const img4_nonce_domain_t*
++nonceDomainEphemeralCryptex(void) {
++    return IMG4_NONCE_DOMAIN_EPHEMERAL_CRYPTEX;
++}
++
++static const img4_nonce_domain_t*
++nonceDomainPDI(void) {
++    return IMG4_NONCE_DOMAIN_PDI;
++}
++
++#pragma mark Firmware Flags
++
++static img4_firmware_flags_t
++firmwareFlagsDTRS(void) {
++    return IMG4_FIRMWARE_FLAG_RESPECT_AMNM;
++}
++
++static img4_firmware_flags_t
++firmwareFlagsSplat(void) {
++#if XNU_TARGET_OS_OSX && (defined(__arm__) || defined(__arm64__))
++    return IMG4_FIRMWARE_FLAG_SUBSEQUENT_STAGE;
++#elif defined(TARGET_OS_OSX) && TARGET_OS_OSX && (TARGET_CPU_ARM || TARGET_CPU_ARM64)
++    return IMG4_FIRMWARE_FLAG_SUBSEQUENT_STAGE;
++#else
++    return IMG4_FIRMWARE_FLAG_INIT;
++#endif
++}
++
++#pragma mark Type Configuration
++
++typedef struct _TrustCacheTypeConfig {
++    /* Chip environment to use for validation */
++    const img4_chip_t* (*chipEnvironment)(void);
++
++    /* Nonce domain for anti-replay */
++    const img4_nonce_domain_t* (*nonceDomain)(void);
++
++    /* Four CC identifier for this type */
++    img4_4cc_t fourCC;
++
++    /* Firmware flags to add for this configuration */
++    img4_firmware_flags_t (*firmwareFlags)(void);
++
++    /*
++     * Higher level policy imposes restrictions on which process can load
++     * which trust cache. These restrictions are enforced through the use
++     * of the entitlement "com.apple.private.pmap.load-trust-cache". The
++     * value here is the required value of the above entitlement.
++     */
++    const char *entitlementValue;
++} TrustCacheTypeConfig_t;
++
++#pragma GCC diagnostic push
++#pragma GCC diagnostic ignored "-Wfour-char-constants"
++
++static const TrustCacheTypeConfig_t TCTypeConfig[kTCTypeTotal] = {
++    /* Static trust caches are loaded as raw modules */
++    [kTCTypeStatic] = {
++        .chipEnvironment = NULL,
++        .nonceDomain = NULL,
++        .fourCC = 0,
++        .firmwareFlags = NULL,
++        .entitlementValue = NULL
++    },
++
++    /* Engineering trust caches are loaded as raw modules */
++    [kTCTypeEngineering] = {
++        .chipEnvironment = NULL,
++        .nonceDomain = NULL,
++        .fourCC = 0,
++        .firmwareFlags = NULL,
++        .entitlementValue = NULL
++    },
++
++    /* Legacy trust caches are loaded as raw modules */
++    [kTCTypeLegacy] = {
++        .chipEnvironment = NULL,
++        .nonceDomain = NULL,
++        .fourCC = 0,
++        .firmwareFlags = NULL,
++        .entitlementValue = NULL
++    },
++
++    [kTCTypeDTRS] = {
++        .chipEnvironment = chipEnvironmentPersonalized,
++        .nonceDomain = NULL,
++        .fourCC = 'dtrs',
++        .firmwareFlags = firmwareFlagsDTRS,
++        .entitlementValue = "personalized.engineering-root"
++    },
++
++    [kTCTypeLTRS] = {
++        .chipEnvironment = chipEnvironmentPersonalized,
++        .nonceDomain = nonceDomainTrustCache,
++        .fourCC = 'ltrs',
++        .firmwareFlags = NULL,
++        .entitlementValue = "personalized.trust-cache"
++    },
++
++    [kTCTypePersonalizedDiskImage] = {
++        .chipEnvironment = chipEnvironmentPersonalized,
++        .nonceDomain = nonceDomainPDI,
++        .fourCC = 'ltrs',
++        .firmwareFlags = NULL,
++        .entitlementValue = "personalized.pdi"
++    },
++
++    [kTCTypeDeveloperDiskImage] = {
++        .chipEnvironment = chipEnvironmentCategorized,
++        .nonceDomain = nonceDomainDDI,
++        .fourCC = 'trdv',
++        .firmwareFlags = NULL,
++        .entitlementValue = "personalized.ddi"
++    },
++
++    [kTCTypeLTRSWithDDINonce] = {
++        .chipEnvironment = chipEnvironmentPersonalized,
++        .nonceDomain = nonceDomainDDI,
++        .fourCC = 'ltrs',
++        .firmwareFlags = NULL,
++        .entitlementValue = "personalized.ddi"
++    },
++
++    [kTCTypeCryptex] = {
++        .chipEnvironment = chipEnvironmentPersonalized,
++        .nonceDomain = nonceDomainCryptex,
++        .fourCC = 'ltrs',
++        .firmwareFlags = NULL,
++        .entitlementValue = "personalized.cryptex-research"
++    },
++
++    [kTCTypeEphemeralCryptex] = {
++        .chipEnvironment = chipEnvironmentEphemeralCryptex,
++        .nonceDomain = nonceDomainEphemeralCryptex,
++        .fourCC = 'ltrs',
++        .firmwareFlags = NULL,
++        .entitlementValue = "personalized.ephemeral-cryptex"
++    },
++
++    [kTCTypeUpdateBrain] = {
++        .chipEnvironment = chipEnvironmentGlobalFF00,
++        .nonceDomain = NULL,
++        .fourCC = 'ltrs',
++        .firmwareFlags = NULL,
++        .entitlementValue = "global.ota-update-brain"
++    },
++
++    [kTCTypeInstallAssistant] = {
++        .chipEnvironment = chipEnvironmentGlobalFF01,
++        .nonceDomain = NULL,
++        .fourCC = 'ltrs',
++        .firmwareFlags = NULL,
++        .entitlementValue = "global.install-assistant"
++    },
++
++    [kTCTypeBootabilityBrain] = {
++        .chipEnvironment = chipEnvironmentGlobalFF06,
++        .nonceDomain = NULL,
++        .fourCC = 'trbb',
++        .firmwareFlags = NULL,
++        .entitlementValue = "global.bootability-brain"
++    },
++
++    [kTCTypeCryptex1BootOS] = {
++        .chipEnvironment = chipEnvironmentCryptex1Boot,
++        .nonceDomain = NULL,
++        .fourCC = 'trcs',
++        .firmwareFlags = firmwareFlagsSplat,
++        .entitlementValue = "cryptex1.boot.os"
++    },
++
++    [kTCTypeCryptex1BootApp] = {
++        .chipEnvironment = chipEnvironmentCryptex1Boot,
++        .nonceDomain = NULL,
++        .fourCC = 'trca',
++        .firmwareFlags = firmwareFlagsSplat,
++        .entitlementValue = "cryptex1.boot.app"
++    },
++
++    [kTCTypeCryptex1PreBootApp] = {
++        .chipEnvironment = chipEnvironmentCryptex1PreBoot,
++        .nonceDomain = NULL,
++        .fourCC = 'trca',
++        .firmwareFlags = firmwareFlagsSplat,
++        .entitlementValue = "cryptex1.preboot.app"
++    },
++
++    [kTCTypeGlobalDiskImage] = {
++        .chipEnvironment = chipEnvironmentGlobalFF00,
++        .nonceDomain = NULL,
++        .fourCC = 'ltrs',
++        .firmwareFlags = NULL,
++        .entitlementValue = "global.pdi"
++    },
++
++    [kTCTypeMobileAssetBrain] = {
++        .chipEnvironment = chipEnvironmentCryptex1MobileAsset,
++        .nonceDomain = NULL,
++        .fourCC = 'trab',
++        .firmwareFlags = NULL,
++        .entitlementValue = "personalized.mobile-asset-brain"
++    },
++
++    [kTCTypeSafariDownlevel] = {
++        .chipEnvironment = chipEnvironmentSafariDownlevel,
++        .nonceDomain = NULL,
++        .fourCC = 'trca',
++        .firmwareFlags = NULL,
++        .entitlementValue = "cryptex1.safari-downlevel"
++    },
++
++    [kTCTypeCryptex1PreBootOS] = {
++        .chipEnvironment = chipEnvironmentCryptex1PreBoot,
++        .nonceDomain = NULL,
++        .fourCC = 'trcs',
++        .firmwareFlags = firmwareFlagsSplat,
++        .entitlementValue = "cryptex1.preboot.os"
++    },
++
++    [kTCTypeSupplementalPersistent] = {
++        .chipEnvironment = chipEnvironmentSupplemental,
++        .nonceDomain = nonceDomainDDI,
++        .fourCC = 'ltrs',
++        .firmwareFlags = NULL,
++        .entitlementValue = "personalized.supplemental-persistent"
++    },
++
++    [kTCTypeSupplementalEphemeral] = {
++        .chipEnvironment = chipEnvironmentSupplemental,
++        .nonceDomain = nonceDomainPDI,
++        .fourCC = 'ltrs',
++        .firmwareFlags = NULL,
++        .entitlementValue = "personalized.supplemental-ephemeral"
++    },
++
++    [kTCTypeCryptex1Generic] = {
++        .chipEnvironment = chipEnvironmentCryptex1Generic,
++        .nonceDomain = NULL,
++        .fourCC = 'gtcd',
++        .firmwareFlags = NULL,
++        .entitlementValue = "cryptex1.generic"
++    },
++
++    [kTCTypeCryptex1GenericSupplemental] = {
++        .chipEnvironment = chipEnvironmentCryptex1GenericSupplemental,
++        .nonceDomain = NULL,
++        .fourCC = 'gtcd',
++        .firmwareFlags = NULL,
++        .entitlementValue = "cryptex1.generic.supplemental"
++    }
++};
++
++#pragma GCC diagnostic pop
++
++__END_DECLS
++#endif /* libTrustCache_TypesConfig_h */
+diff --git a/bsd/kern/kern_exec.c b/bsd/kern/kern_exec.c
+index 685f28bf..0834a5a2 100644
+--- a/bsd/kern/kern_exec.c
++++ b/bsd/kern/kern_exec.c
+@@ -183,7 +183,7 @@
+ 
+ #include "kern_exec_internal.h"
+ 
+-#include <CodeSignature/Entitlements.h>
++#include <CoreEntitlements/CoreEntitlements.h>
+ 
+ #include <mach/exclaves.h>
+ 
+diff --git a/bsd/net/necp_client.c b/bsd/net/necp_client.c
+index 7e18ca4a..5c20b6dc 100644
+--- a/bsd/net/necp_client.c
++++ b/bsd/net/necp_client.c
+@@ -68,7 +68,7 @@
+ 
+ #include <os/refcnt.h>
+ 
+-#include <CodeSignature/Entitlements.h>
++#include <CoreEntitlements/CoreEntitlements.h>
+ 
+ #if SKYWALK
+ #include <skywalk/os_skywalk_private.h>
+diff --git a/bsd/skywalk/packet/packet_kern.c b/bsd/skywalk/packet/packet_kern.c
+index 7dbbdf88..04d6de7a 100644
+--- a/bsd/skywalk/packet/packet_kern.c
++++ b/bsd/skywalk/packet/packet_kern.c
+@@ -287,6 +287,37 @@ kern_packet_get_inet_checksum(const kern_packet_t ph, uint16_t *start,
+ 	return __packet_get_inet_checksum(ph, start, val, tx);
+ }
+ 
++errno_t
++kern_packet_set_fpd_command(const kern_packet_t ph,
++							uint8_t cmd)
++{
++	errno_t result;
++
++	if (cmd > 7)
++		return 22;
++	result = 0;
++	PKT_ADDR(ph)->pkt_fpd_metadata |= ((cmd & 7) << 6) | 0x8000;
++	return result;
++}
++
++errno_t
++kern_packet_set_fpd_sequence_number(const kern_packet_t ph,
++									uint32_t seq_num)
++{
++	PKT_ADDR(ph)->pkt_fpd_seqnum = seq_num;
++	PKT_ADDR(ph)->pkt_fpd_metadata |= 0x8000;
++	return 0;
++}
++
++errno_t
++kern_packet_set_fpd_context_id(const kern_packet_t ph,
++							   uint16_t ctx_id)
++{
++	PKT_ADDR(ph)->pkt_fpd_metadata |= ctx_id & 0x3F | 0x8000;
++	return 0;
++}
++
++
+ void
+ kern_packet_set_flow_uuid(const kern_packet_t ph, const uuid_t flow_uuid)
+ {
+@@ -955,24 +986,6 @@ kern_packet_copy_bytes(kern_packet_t pkt, size_t off, size_t len, void* out_data
+ 	return 0;
+ }
+ 
+-errno_t
+-kern_packet_set_fpd_sequence_number(__unused const kern_packet_t ph, __unused uint32_t seq_num)
+-{
+-	return 0;
+-}
+-
+-errno_t
+-kern_packet_set_fpd_context_id(__unused const kern_packet_t ph, __unused uint16_t ctx_id)
+-{
+-	return 0;
+-}
+-
+-errno_t
+-kern_packet_set_fpd_command(__unused const kern_packet_t ph, __unused uint8_t cmd)
+-{
+-	return 0;
+-}
+-
+ errno_t
+ kern_packet_get_flowid(const kern_packet_t ph, packet_flowid_t *pflowid)
+ {
+diff --git a/bsd/skywalk/packet/packet_var.h b/bsd/skywalk/packet/packet_var.h
+index 6474f5f0..cf37cb09 100644
+--- a/bsd/skywalk/packet/packet_var.h
++++ b/bsd/skywalk/packet/packet_var.h
+@@ -441,7 +441,8 @@ struct __kern_packet {
+ 
+ 	void *      pkt_priv;   /* free to use for every layer */
+ 
+-
++	uint32_t               pkt_fpd_seqnum;   // @ 0xd0
++	uint16_t               pkt_fpd_metadata; // @ 0xd4
+ 	/*
+ 	 * Kernel specific.
+ 	 *
+diff --git a/bsd/sys/make_symbol_aliasing.sh b/bsd/sys/make_symbol_aliasing.sh
+index 24fb244d..4c9f4789 100755
+--- a/bsd/sys/make_symbol_aliasing.sh
++++ b/bsd/sys/make_symbol_aliasing.sh
+@@ -34,7 +34,7 @@ fi
+ SDKROOT="$1"
+ OUTPUT="$2"
+ 
+-AVAILABILITY_PL="${SDKROOT}/${DRIVERKITROOT}/usr/local/libexec/availability.pl"
++AVAILABILITY_PL="${FAKEROOT_DIR}/usr/local/libexec/availability.pl"
+ 
+ if [ ! -x "${AVAILABILITY_PL}" ] ; then
+     echo "Unable to locate ${AVAILABILITY_PL} (or not executable)" >&2
+diff --git a/iokit/DriverKit/IORPC.h b/iokit/DriverKit/IORPC.h
+index 7ffc6b73..5d49f179 100644
+--- a/iokit/DriverKit/IORPC.h
++++ b/iokit/DriverKit/IORPC.h
+@@ -267,4 +267,6 @@ struct OSClassDescription {
+ 	char        metaMethodNames[0];
+ };
+ 
++IORPCMessage *IORPCMessageFromMach(IORPCMessageMach * msg, bool reply);
++
+ #endif /* _IORPC_H */
+diff --git a/iokit/DriverKit/IOReturn.h b/iokit/DriverKit/IOReturn.h
+index e36d37b3..71f6b40f 100644
+--- a/iokit/DriverKit/IOReturn.h
++++ b/iokit/DriverKit/IOReturn.h
+@@ -36,6 +36,10 @@
+ #ifndef __IOKIT_IORETURN_H
+ #define __IOKIT_IORETURN_H
+ 
++#include <IOKit/IORPC.h>
++IORPCMessage *
++IORPCMessageFromMach(IORPCMessageMach * msg, bool reply);
++
+ #ifdef __cplusplus
+ extern "C" {
+ #endif
+diff --git a/iokit/IOKit/IORPC.h b/iokit/IOKit/IORPC.h
+index 7ffc6b73..5d49f179 100644
+--- a/iokit/IOKit/IORPC.h
++++ b/iokit/IOKit/IORPC.h
+@@ -267,4 +267,6 @@ struct OSClassDescription {
+ 	char        metaMethodNames[0];
+ };
+ 
++IORPCMessage *IORPCMessageFromMach(IORPCMessageMach * msg, bool reply);
++
+ #endif /* _IORPC_H */
+diff --git a/iokit/Kernel/IOUserServer.cpp b/iokit/Kernel/IOUserServer.cpp
+index d61ffd1f..9100d9f1 100644
+--- a/iokit/Kernel/IOUserServer.cpp
++++ b/iokit/Kernel/IOUserServer.cpp
+@@ -2404,7 +2404,7 @@ OSMetaClassBase::Invoke(IORPC rpc)
+ 	IORPCMessage    * message;
+ 
+ 	assert(rpc.sendSize >= (sizeof(IORPCMessageMach) + sizeof(IORPCMessage)));
+-	message = rpc.kernelContent;
++	message = IORPCMessageFromMach(rpc.message, false);
+ 	if (!message) {
+ 		return kIOReturnIPCError;
+ 	}
+@@ -3630,6 +3630,45 @@ IORPCMessageFromMachReply(IORPCMessageMach * msg)
+ 	return (IORPCMessage *)(uintptr_t) desc;
+ }
+ 
++IORPCMessage *
++IORPCMessageFromMach(IORPCMessageMach * msg, bool reply)
++{
++	mach_msg_size_t              idx, count;
++	mach_msg_port_descriptor_t * desc;
++	mach_msg_port_descriptor_t * maxDesc;
++	size_t                       size, msgsize;
++	bool                         upgrade;
++
++	msgsize = msg->msgh.msgh_size;
++	count   = msg->msgh_body.msgh_descriptor_count;
++	desc    = &msg->objects[0];
++	maxDesc = (typeof(maxDesc))(((uintptr_t) msg) + msgsize);
++	upgrade = (msg->msgh.msgh_id != (reply ? kIORPCVersionCurrentReply : kIORPCVersionCurrent));
++
++	if (upgrade) {
++		OSReportWithBacktrace("obsolete message");
++		return NULL;
++	}
++
++	for (idx = 0; idx < count; idx++) {
++		if (desc >= maxDesc) {
++			return NULL;
++		}
++		switch (desc->type) {
++		case MACH_MSG_PORT_DESCRIPTOR:
++			size = sizeof(mach_msg_port_descriptor_t);
++			break;
++		case MACH_MSG_OOL_DESCRIPTOR:
++			size = sizeof(mach_msg_ool_descriptor_t);
++			break;
++		default:
++			return NULL;
++		}
++		desc = (typeof(desc))(((uintptr_t) desc) + size);
++	}
++	return (IORPCMessage *)(uintptr_t) desc;
++}
++
+ ipc_port_t
+ IOUserServer::copySendRightForObject(OSObject * object, ipc_kobject_type_t type)
+ {
+diff --git a/libsyscall/Libsyscall.xcconfig b/libsyscall/Libsyscall.xcconfig
+index 8b4b2197..3137114e 100644
+--- a/libsyscall/Libsyscall.xcconfig
++++ b/libsyscall/Libsyscall.xcconfig
+@@ -1,4 +1,4 @@
+-#include "<DEVELOPER_DIR>/Makefiles/CoreOS/Xcode/BSD.xcconfig"
++
+ 
+ BUILD_VARIANTS = normal
+ SUPPORTED_PLATFORMS = macosx iphoneos iphoneosnano tvos appletvos watchos bridgeos driverkit
+diff --git a/makedefs/MakeInc.cmd b/makedefs/MakeInc.cmd
+index ee2679f5..f7821887 100644
+--- a/makedefs/MakeInc.cmd
++++ b/makedefs/MakeInc.cmd
+@@ -221,10 +221,10 @@ ifeq ($(origin CXX),default)
+ 	export CXX := $(shell $(XCRUN) -sdk $(SDKROOT) -find clang++)
+ endif
+ ifeq ($(origin MIG),undefined)
+-	export MIG := $(shell $(XCRUN) -sdk $(SDKROOT) -find mig)
++	export MIG := $(shell find $(FAKEROOT_DIR) -name "mig")
+ endif
+ ifeq ($(origin MIGCOM),undefined)
+-	export MIGCOM := $(shell $(XCRUN) -sdk $(SDKROOT) -find migcom)
++	export MIGCOM := $(shell find $(FAKEROOT_DIR) -name "migcom")
+ endif
+ ifeq ($(origin MIGCC),undefined)
+ 	export MIGCC := $(CC)
+diff --git a/makedefs/MakeInc.def b/makedefs/MakeInc.def
+index d9969c2b..0cf1110b 100644
+--- a/makedefs/MakeInc.def
++++ b/makedefs/MakeInc.def
+@@ -667,7 +667,7 @@ LDFLAGS_KERNEL_GEN = \
+ 	-Wl,-headerpad,152
+ 
+ # LDFLAGS_KERNEL_SDK	= -L$(SDKROOT)/usr/local/lib/kernel -lfirehose_kernel
+-LDFLAGS_KERNEL_SDK	= -L$(SDKROOT)/usr/local/lib/kernel -L$(SDKROOT)/usr/local/lib/kernel/platform
++LDFLAGS_KERNEL_SDK	= -L$(FAKEROOT_DIR)/usr/local/lib/kernel -lfirehose_kernel
+ 
+ LDFLAGS_KERNEL_RELEASE	=
+ LDFLAGS_KERNEL_DEVELOPMENT =
+@@ -915,7 +915,7 @@ INCFLAGS_IMPORT	= $(patsubst %, -I$(OBJROOT)/EXPORT_HDRS/%, $(COMPONENT_IMPORT_L
+ INCFLAGS_EXTERN	= -I$(SRCROOT)/EXTERNAL_HEADERS
+ INCFLAGS_GEN	= -I$(SRCROOT)/$(COMPONENT) -I$(OBJROOT)/EXPORT_HDRS/$(COMPONENT)
+ INCFLAGS_LOCAL	= -I.
+-INCFLAGS_SDK	= -I$(SDKROOT)/usr/local/include/kernel
++INCFLAGS_SDK	= -I$(FAKEROOT_DIR)/usr/local/include/kernel
+ INCFLAGS_PLATFORM = -I$(SDKROOT)/$(KPINCDIR)/platform
+ 
+ INCFLAGS	= $(INCFLAGS_LOCAL) $(INCFLAGS_GEN) $(INCFLAGS_IMPORT) $(INCFLAGS_EXTERN) $(INCFLAGS_MAKEFILE) $(INCFLAGS_SDK) $(INCFLAGS_PLATFORM)
+diff --git a/osfmk/arm64/machine_routines.c b/osfmk/arm64/machine_routines.c
+index 9cbf41e6..0e6c528d 100644
+--- a/osfmk/arm64/machine_routines.c
++++ b/osfmk/arm64/machine_routines.c
+@@ -2197,7 +2197,7 @@ static inline uint64_t
+ nonspeculative_timebase(void)
+ {
+ #if defined(HAS_ACNTVCT)
+-	return __builtin_arm_rsr64("ACNTVCT_EL0");
++	return __builtin_arm_rsr64("S3_4_c15_c10_6"); // ACNTVCT_EL0
+ #elif __ARM_ARCH_8_6__
+ 	return __builtin_arm_rsr64("CNTVCTSS_EL0");
+ #else
+diff --git a/tools/lldbmacros/core/operating_system.py b/tools/lldbmacros/core/operating_system.py
+index 0ea8b27c..43ad85b5 100755
+--- a/tools/lldbmacros/core/operating_system.py
++++ b/tools/lldbmacros/core/operating_system.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python
++#!/usr/bin/env python
+ #
+ 
+ #source of register info is from http://opensource.apple.com/source/gdb/gdb-962/src/gdb/arm-tdep.c
+diff --git a/tools/lldbmacros/core/syntax_checker.py b/tools/lldbmacros/core/syntax_checker.py
+index 62d4681f..606ce299 100755
+--- a/tools/lldbmacros/core/syntax_checker.py
++++ b/tools/lldbmacros/core/syntax_checker.py
+@@ -10,9 +10,6 @@ Usage:
+ """
+ import sys
+ import os
+-import re
+-
+-tabs_search_rex = re.compile("^\s*\t+",re.MULTILINE|re.DOTALL)
+ 
+ def find_non_ascii(s):
+     for c in s:
+@@ -32,20 +29,6 @@ if __name__ == "__main__":
+             print("Note: %s is not a valid python file. Skipping." % fname)
+             continue
+         fh = open(fname)
+-        strdata = fh.readlines()
+-        lineno = 0
+-        syntax_fail = False
+-        for linedata in strdata:
+-            lineno += 1
+-            if len(tabs_search_rex.findall(linedata)) > 0 :
+-                print("Error: Found a TAB character at %s:%d" % (fname, lineno), file=sys.stderr)
+-                syntax_fail = True
+-        if find_non_ascii(linedata):
+-            print("Error: Found a non ascii character at %s:%d" % (fname, lineno), file=sys.stderr)
+-            syntax_fail = True
+-        if syntax_fail:
+-            print("Error: Syntax check failed. Please fix the errors and try again.", file=sys.stderr)
+-            sys.exit(1)
+         #now check for error in compilation
+         try:
+             with open(fname, 'r') as file:
+diff --git a/tools/lldbmacros/scheduler.py b/tools/lldbmacros/scheduler.py
+index 20db7d56..b343a4e7 100755
+--- a/tools/lldbmacros/scheduler.py
++++ b/tools/lldbmacros/scheduler.py
+@@ -127,13 +127,13 @@ def showinterruptsourceinfo(cmd_args = None):
+     print(object_info)
+     print("--- Dumping IOFilterInterruptEventSource object ---\n")
+     #Dump the IOFilterInterruptEventSource object.
+-    target_info=re.search('target =\s+(.*)',object_info)
++    target_info=re.search('target =\\s+(.*)',object_info)
+     target= target_info.group()
+     target= target.split()
+     #Dump the Object pointer of the source who is triggering the Interrupts.
+     vector_info=lldb_run_command("dumpobject {:s} ".format(target[2]))
+     print(vector_info)
+-    owner_info= re.search('owner =\s+(.*)',vector_info)
++    owner_info= re.search('owner =\\s+(.*)',vector_info)
+     owner= owner_info.group()
+     owner= owner.split()
+     print("\n\n")
+diff --git a/tools/lldbmacros/userspace.py b/tools/lldbmacros/userspace.py
+index 4edff39e..af53f7c9 100755
+--- a/tools/lldbmacros/userspace.py
++++ b/tools/lldbmacros/userspace.py
+@@ -265,7 +265,7 @@ Application Specific Information:
+ Synthetic crash log generated from Kernel userstacks
+ 
+ """
+-    user_lib_rex = re.compile("([0-9a-fx]+)\s-\s([0-9a-fx]+)\s+(.*?)\s", re.IGNORECASE|re.MULTILINE)
++    user_lib_rex = re.compile("([0-9a-fx]+)\\s-\\s([0-9a-fx]+)\\s+(.*?)\\s", re.IGNORECASE|re.MULTILINE)
+     from datetime import datetime
+     if pval:
+         ts = datetime.fromtimestamp(int(pval.p_start.tv_sec))
+diff --git a/tools/lldbmacros/utils.py b/tools/lldbmacros/utils.py
+index e2d168fe..f92c6eb5 100755
+--- a/tools/lldbmacros/utils.py
++++ b/tools/lldbmacros/utils.py
+@@ -530,7 +530,7 @@ def dsymForUUID(uuid):
+         # because of <rdar://12713712>
+         #plist = plistlib.readPlistFromString(output)
+         #beginworkaround
+-        keyvalue_extract_re = re.compile("<key>(.*?)</key>\s*<string>(.*?)</string>",re.IGNORECASE|re.MULTILINE|re.DOTALL)
++        keyvalue_extract_re = re.compile("<key>(.*?)</key>\\s*<string>(.*?)</string>",re.IGNORECASE|re.MULTILINE|re.DOTALL)
+         plist={}
+         plist[uuid] = {}
+         for item in keyvalue_extract_re.findall(output):
+diff --git a/tools/lldbmacros/xnu.py b/tools/lldbmacros/xnu.py
+index d3e27fc6..5e3c50ff 100755
+--- a/tools/lldbmacros/xnu.py
++++ b/tools/lldbmacros/xnu.py
+@@ -1168,7 +1168,7 @@ def __lldb_init_module(debugger, internal_dict):
+     if _xnu_framework_init:
+         return
+     _xnu_framework_init = True
+-    debugger.HandleCommand('type summary add --regex --summary-string "${var%s}" -C yes -p -v "char *\[[0-9]*\]"')
++    debugger.HandleCommand('type summary add --regex --summary-string "${var%s}" -C yes -p -v "char *\\[[0-9]*\\]"')
+     debugger.HandleCommand('type format add --format hex -C yes uintptr_t')
+     kern = KernelTarget(debugger)
+     if not hasattr(lldb.SBValue, 'GetValueAsAddress'):
+diff --git a/tools/lldbmacros/xnutriage.py b/tools/lldbmacros/xnutriage.py
+index bd071529..5dbd1b0c 100755
+--- a/tools/lldbmacros/xnutriage.py
++++ b/tools/lldbmacros/xnutriage.py
+@@ -89,7 +89,7 @@ def parseLR(cmd_args=None):
+             paniclog_data += returnfunc("\n(lldb) paniclog\n", "paniclog")
+ 
+     if panic_found == 1:
+-        srch_string = "lr:\s+0x[a-fA-F0-9]+\s"
++        srch_string = "lr:\\s+0x[a-fA-F0-9]+\\s"
+         lr_pc_srch = re.findall(srch_string, paniclog_data)
+         if lr_pc_srch:
+             print(paniclog_data, lr_pc_srch)
+@@ -110,7 +110,7 @@ def parseLRfromfile(cmd_args=None):
+     """
+     f = open('/tmp/lrparsefile', 'r')
+     parse_data= f.read()
+-    srch_string = "lr:\s+0x[a-fA-F0-9]+\s"
++    srch_string = "lr:\\s+0x[a-fA-F0-9]+\\s"
+     lr_pc_srch = re.findall(srch_string, parse_data)
+     if lr_pc_srch:
+         print(paniclog_data, lr_pc_srch)
+diff --git a/tools/lldbmacros/zonetriage.py b/tools/lldbmacros/zonetriage.py
+index 57b1cc73..5575c215 100755
+--- a/tools/lldbmacros/zonetriage.py
++++ b/tools/lldbmacros/zonetriage.py
+@@ -26,7 +26,7 @@ import os.path
+ panic_string = None
+ ## If the following panic strings are modified in xnu/osfmk/kern/zalloc.c, they must be updated here to reflect the change.
+ zone_element_modified = ".*a freed zone element has been modified in zone (?P<zone>.+): expected (0x)?([0-9A-Fa-f]*)? but found (0x)?([0-9A-Fa-f]*)?, bits changed (0x)?([0-9A-Fa-f]*)?, at offset ([0-9]*)? of ([0-9]*)? in element (?P<element>0x[0-9A-Fa-f]*), cookies (0x)?([0-9A-Fa-f]*)? (0x)?([0-9A-Fa-f]*)?.*"
+-zone_map_exhausted = ".*zalloc: zone map exhausted while allocating from zone .+, likely due to memory leak in zone (?P<zone>.+) \(([0-9]*)? total bytes, ([0-9]*)? elements allocated\).*"
++zone_map_exhausted = ".*zalloc: zone map exhausted while allocating from zone .+, likely due to memory leak in zone (?P<zone>.+) \\(([0-9]*)? total bytes, ([0-9]*)? elements allocated\\).*"
+ 
+ # Macro: zonetriage, zonetriage_freedelement, zonetriage_memoryleak
+ @lldb_command('zonetriage')
+diff --git a/tools/tests/perf_index/test_controller.py b/tools/tests/perf_index/test_controller.py
+index 73d2a1b3..e762505b 100755
+--- a/tools/tests/perf_index/test_controller.py
++++ b/tools/tests/perf_index/test_controller.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python
++#!/usr/bin/env python
+ from __future__ import absolute_import, print_function
+ import socket
+ import time
+
