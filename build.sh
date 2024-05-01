@@ -210,21 +210,19 @@ choose_xnu() {
         ;;
     esac
     info "Building XNU for macOS ${MACOS_VERSION}"
-    if [ "$BUILDKC" -ne "0" ]; then
-        if [ ! -d "$KDKROOT" ]; then
-            KDK_URL=$(curl -s "https://raw.githubusercontent.com/dortania/KdkSupportPkg/gh-pages/manifest.json" | jq -r --arg KDK_NAME "$KDK_NAME" '.[] | select(.name==$KDK_NAME) | .url')
-            running "Downloading '$KDK_NAME' to /tmp"
-            curl --progress-bar --max-time 900 --connect-timeout 60 -L -o /tmp/KDK.dmg "${KDK_URL}"
-            running "Installing KDK"
-            hdiutil attach /tmp/KDK.dmg
-            if [ ! -d " /Library/Developer/KDKs" ]; then
-                sudo mkdir -p /Library/Developer/KDKs
-                sudo chmod 755 /Library/Developer/KDKs
-            fi
-            sudo installer -pkg '/Volumes/Kernel Debug Kit/KernelDebugKit.pkg' -target /
-            hdiutil detach '/Volumes/Kernel Debug Kit'
-            ls -lah /Library/Developer/KDKs
+    if [ ! -d "$KDKROOT" ]; then
+        KDK_URL=$(curl -s "https://raw.githubusercontent.com/dortania/KdkSupportPkg/gh-pages/manifest.json" | jq -r --arg KDK_NAME "$KDK_NAME" '.[] | select(.name==$KDK_NAME) | .url')
+        running "Downloading '$KDK_NAME' to /tmp"
+        curl --progress-bar --max-time 900 --connect-timeout 60 -L -o /tmp/KDK.dmg "${KDK_URL}"
+        running "Installing KDK"
+        hdiutil attach /tmp/KDK.dmg
+        if [ ! -d " /Library/Developer/KDKs" ]; then
+            sudo mkdir -p /Library/Developer/KDKs
+            sudo chmod 755 /Library/Developer/KDKs
         fi
+        sudo installer -pkg '/Volumes/Kernel Debug Kit/KernelDebugKit.pkg' -target /
+        hdiutil detach '/Volumes/Kernel Debug Kit'
+        ls -lah /Library/Developer/KDKs
     fi
 }
 
