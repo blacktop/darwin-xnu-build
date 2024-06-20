@@ -71,7 +71,7 @@ clean() {
     declare -a paths_to_delete=(
         "${BUILD_DIR}"
         "${FAKEROOT_DIR}"
-        "${WORK_DIR}/xnu"
+        #"${XNU_DIR}"
         "${WORK_DIR}/bootstrap_cmds"
         "${WORK_DIR}/dtrace"
         "${WORK_DIR}/AvailabilityVersions"
@@ -246,29 +246,30 @@ venv() {
 }
 
 get_xnu() {
-    if [ ! -d "${WORK_DIR}/xnu" ]; then
+    XNU_VERSION=$(curl -s $RELEASE_URL | jq -r '.projects[] | select(.project=="xnu") | .tag')
+    XNU_DIR="${WORK_DIR}/${XNU_VERSION}"
+    if [ ! -d "${XNU_DIR}" ]; then
         running "⬇️ Cloning xnu"
-        XNU_VERSION=$(curl -s $RELEASE_URL | jq -r '.projects[] | select(.project=="xnu") | .tag')
-        git clone --branch "${XNU_VERSION}" https://github.com/apple-oss-distributions/xnu.git "${WORK_DIR}/xnu"
+        git clone --branch "${XNU_VERSION}" https://github.com/apple-oss-distributions/xnu.git "${XNU_DIR}"
     fi
     if [ -f "${CACHE_DIR}/${MACOS_VERSION}/compile_commands.json" ]; then
         info "Restoring cached ${CACHE_DIR}/${MACOS_VERSION}/compile_commands.json"
-        cp -f "${CACHE_DIR}/${MACOS_VERSION}/compile_commands.json" "${WORK_DIR}/xnu"
+        cp -f "${CACHE_DIR}/${MACOS_VERSION}/compile_commands.json" "${XNU_DIR}"
     fi
 }
 
 patches() {
     running "🩹 Patching xnu files"
     # xnu headers patch
-    sed -i '' 's|^AVAILABILITY_PL="${SDKROOT}/${DRIVERKITROOT}|AVAILABILITY_PL="${FAKEROOT_DIR}|g' "${WORK_DIR}/xnu/bsd/sys/make_symbol_aliasing.sh"
+    sed -i '' 's|^AVAILABILITY_PL="${SDKROOT}/${DRIVERKITROOT}|AVAILABILITY_PL="${FAKEROOT_DIR}|g' "${XNU_DIR}/bsd/sys/make_symbol_aliasing.sh"
     # libsyscall patch
-    sed -i '' 's|^#include.*BSD.xcconfig.*||g' "${WORK_DIR}/xnu/libsyscall/Libsyscall.xcconfig"
+    sed -i '' 's|^#include.*BSD.xcconfig.*||g' "${XNU_DIR}/libsyscall/Libsyscall.xcconfig"
     # xnu build patch
-    sed -i '' 's|^LDFLAGS_KERNEL_SDK	= -L$(SDKROOT).*|LDFLAGS_KERNEL_SDK	= -L$(FAKEROOT_DIR)/usr/local/lib/kernel -lfirehose_kernel|g' "${WORK_DIR}/xnu/makedefs/MakeInc.def"
-    sed -i '' 's|^INCFLAGS_SDK	= -I$(SDKROOT)|INCFLAGS_SDK	= -I$(FAKEROOT_DIR)|g' "${WORK_DIR}/xnu/makedefs/MakeInc.def"
+    sed -i '' 's|^LDFLAGS_KERNEL_SDK	= -L$(SDKROOT).*|LDFLAGS_KERNEL_SDK	= -L$(FAKEROOT_DIR)/usr/local/lib/kernel -lfirehose_kernel|g' "${XNU_DIR}/makedefs/MakeInc.def"
+    sed -i '' 's|^INCFLAGS_SDK	= -I$(SDKROOT)|INCFLAGS_SDK	= -I$(FAKEROOT_DIR)|g' "${XNU_DIR}/makedefs/MakeInc.def"
     # specify location of mig (bootstrap_cmds)
-    sed -i '' 's|export MIG := $(shell $(XCRUN) -sdk $(SDKROOT) -find mig)|export MIG := $(shell find $(FAKEROOT_DIR) -name "mig")|g' "${WORK_DIR}/xnu/makedefs/MakeInc.cmd"
-    sed -i '' 's|export MIGCOM := $(shell $(XCRUN) -sdk $(SDKROOT) -find migcom)|export MIGCOM := $(shell find $(FAKEROOT_DIR) -name "migcom")|g' "${WORK_DIR}/xnu/makedefs/MakeInc.cmd"
+    sed -i '' 's|export MIG := $(shell $(XCRUN) -sdk $(SDKROOT) -find mig)|export MIG := $(shell find $(FAKEROOT_DIR) -name "mig")|g' "${XNU_DIR}/makedefs/MakeInc.cmd"
+    sed -i '' 's|export MIGCOM := $(shell $(XCRUN) -sdk $(SDKROOT) -find migcom)|export MIGCOM := $(shell find $(FAKEROOT_DIR) -name "migcom")|g' "${XNU_DIR}/makedefs/MakeInc.cmd"
     # Don't apply patches when building CodeQL database to keep code pure
     if [ "$CODEQL" -eq "0" ]; then
        PATCH_DIR=""
@@ -284,7 +285,7 @@ patches() {
             exit 1
             ;;
         esac
-        cd "${WORK_DIR}/xnu"
+        cd "${XNU_DIR}"
         for PATCH in "${PATCH_DIR}"/*.patch; do
             if git apply --check "$PATCH" 2> /dev/null; then
                 running "Applying patch: ${PATCH}"
@@ -353,7 +354,7 @@ build_availabilityversions() {
 xnu_headers() {
     if [ ! -f "${HAVE_WE_INSTALLED_HEADERS_YET}" ]; then
         running "Installing xnu headers"
-        SRCROOT="${WORK_DIR}/xnu"
+        SRCROOT="${XNU_DIR}"
         OBJROOT="${BUILD_DIR}/xnu-hdrs.obj"
         SYMROOT="${BUILD_DIR}/xnu-hdrs.sym"
         cd "${SRCROOT}"
@@ -383,7 +384,7 @@ libsystem_headers() {
 libsyscall_headers() {
     if [ ! -f "${FAKEROOT_DIR}/usr/include/os/proc.h" ]; then
         running "Installing libsyscall headers"
-        SRCROOT="${WORK_DIR}/xnu/libsyscall"
+        SRCROOT="${XNU_DIR}/libsyscall"
         OBJROOT="${BUILD_DIR}/libsyscall.obj"
         SYMROOT="${BUILD_DIR}/libsyscall.sym"
         cd "${SRCROOT}"
@@ -435,7 +436,7 @@ build_xnu() {
                 error "KDKROOT not found: ${KDKROOT} - please install from the Developer Portal"
                 exit 1
             fi
-            SRCROOT="${WORK_DIR}/xnu"
+            SRCROOT="${XNU_DIR}"
             OBJROOT="${BUILD_DIR}/xnu-compiledb.obj"
             SYMROOT="${BUILD_DIR}/xnu-compiledb.sym"
             rm -rf "${OBJROOT}"
@@ -454,7 +455,7 @@ build_xnu() {
                 error "KDKROOT not found: ${KDKROOT} - please install from the Developer Portal"
                 exit 1
             fi
-            SRCROOT="${WORK_DIR}/xnu"
+            SRCROOT="${XNU_DIR}"
             OBJROOT="${BUILD_DIR}/xnu.obj"
             SYMROOT="${BUILD_DIR}/xnu.sym"
             cd "${SRCROOT}"
