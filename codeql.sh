@@ -13,7 +13,7 @@ fi
 if [[ "${1-}" =~ ^-*h(elp)?$ ]]; then
     echo 'Usage: codeql.sh
 
-This script creates the macOS 13.5 xnu kernel codeql database
+This script creates the macOS xnu kernel codeql database
 
 '
     exit
