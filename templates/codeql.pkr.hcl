@@ -37,7 +37,6 @@ build {
       "brew update",
       "brew upgrade",
       "brew install jq gum cmake ninja",
-      "brew install blacktop/tap/ipsw",
     ]
   }
 
@@ -49,6 +48,23 @@ build {
       "brew upgrade",
       "brew install codeql",
       "codeql pack download codeql/cpp-queries",
+    ]
+  }
+
+  // `ipsw` development tools
+  provisioner "shell" {
+    inline = [
+      "source ~/.zprofile",
+      "brew --version",
+      "brew update",
+      "brew upgrade",
+      "brew install go goreleaser zig unicorn libusb",
+      "brew install blacktop/tap/ipsw",
+      "go install golang.org/x/tools/...@latest",
+      "go install github.com/spf13/cobra-cli@latest",
+      "go get -d golang.org/x/tools/cmd/cover",
+      "go get -d golang.org/x/tools/cmd/stringer",
+      "go install github.com/caarlos0/svu@v1.4.1",
     ]
   }
 
