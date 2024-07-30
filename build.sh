@@ -214,6 +214,12 @@ choose_xnu() {
         KDKROOT='/Library/Developer/KDKs/KDK_14.5_23F79.kdk'
         RC_DARWIN_KERNEL_VERSION='23.5.0'
         ;;
+    '14.6')
+        RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-146/release.json'
+        KDK_NAME='Kernel Debug Kit 14.6 build 23G80'
+        KDKROOT='/Library/Developer/KDKs/KDK_14.6_23G80.kdk'
+        RC_DARWIN_KERNEL_VERSION='23.6.0'
+        ;;
     *)
         error "Invalid xnu version"
         exit 1
@@ -276,7 +282,7 @@ patches() {
         '12.5' | '13.0' | '13.1' | '13.2' | '13.3' | '13.4' | '13.5' | '14.0' | '14.1' | '14.2' | '14.3')
             PATCH_DIR="${WORK_DIR}/patches"
             ;;
-        '14.4' | '14.5')
+        '14.4' | '14.5' | '14.6')
             PATCH_DIR="${WORK_DIR}/patches/14.4"
             ;;
         *)
