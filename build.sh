@@ -224,7 +224,7 @@ choose_xnu() {
         RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-150/release.json'
         KDK_NAME='Kernel Debug Kit 15.0 build 24A335'
         KDKROOT='/Library/Developer/KDKs/KDK_15.0_24A335.kdk'
-        RC_DARWIN_KERNEL_VERSION='24.4.0'
+        RC_DARWIN_KERNEL_VERSION='24.0.0'
         ;;
     *)
         error "Invalid xnu version"
