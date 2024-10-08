@@ -288,8 +288,11 @@ patches() {
         '12.5' | '13.0' | '13.1' | '13.2' | '13.3' | '13.4' | '13.5' | '14.0' | '14.1' | '14.2' | '14.3')
             PATCH_DIR="${WORK_DIR}/patches"
             ;;
-        '14.4' | '14.5' | '14.6' | '15.0')
+        '14.4' | '14.5')
             PATCH_DIR="${WORK_DIR}/patches/14.4"
+            ;;
+        '14.6' | '15.0')
+            PATCH_DIR="${WORK_DIR}/patches/15.0"
             ;;
         *)
             error "Invalid xnu version"
@@ -297,6 +300,10 @@ patches() {
             ;;
         esac
         cd "${WORK_DIR}/xnu"
+        for SCRIPT in "${PATCH_DIR}"/*.sh; do
+            running "Running script: ${SCRIPT}"
+            bash "${SCRIPT}"
+        done
         for PATCH in "${PATCH_DIR}"/*.patch; do
             if git apply --check "$PATCH" 2> /dev/null; then
                 running "Applying patch: ${PATCH}"
