@@ -1,5 +1,5 @@
-MACOS_VERSION=sonoma-xcode
-MACOS_VM_NAME=sonoma-codeql
+MACOS_VERSION=sequoia-xcode
+MACOS_VM_NAME=sequoia-codeql
 
 .PHONY: deps
 deps:
@@ -27,5 +27,13 @@ codeql-db:
 	@cirrus run
 	@echo " 🎉 Done! 🎉"
 	@cirrus run --artifacts-dir artifacts
+
+clean:
+	@echo " > Cleaning up"
+	@rm -rf ./artifacts
+	@rm -rf ./venv
+	@rm -rf ./xnu-codeql
+	@rm xnu-codeql.zip
+	@echo " 🎉 Done! 🎉"
 
 .DEFAULT_GOAL := build-vm

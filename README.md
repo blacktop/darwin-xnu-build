@@ -27,7 +27,7 @@
 | macOS 14.3 |    ✅     | [DB](https://github.com/blacktop/darwin-xnu-build/releases/download/v14.3/xnu-codeql.zip) |    ✅       /     ✅     |
 | macOS 14.4 |    ✅     | [DB](https://github.com/blacktop/darwin-xnu-build/releases/download/v14.4/xnu-codeql.zip) |    ✅       /     ✅     |
 | macOS 14.5 |    ✅     | [DB](https://github.com/blacktop/darwin-xnu-build/releases/download/v14.5/xnu-codeql.zip) |    ✅       /     ✅     |
-| macOS 14.6 |    ✅     |                                             ❔                                            |    ❔       /     ❔     |
+| macOS 14.6 |    ✅     | [DB](https://github.com/blacktop/darwin-xnu-build/releases/download/v14.6/xnu-codeql.zip) |    ❔       /     ❔     |
 | macOS 15.0 |    ✅     |                                             ❔                                            |    ✅       /     ✅     |
 
 > [!NOTE]
@@ -89,7 +89,7 @@ Where:
 ### Build the kernel and kernel Collection
 
 ```bash
-KERNEL_CONFIG=RELEASE ARCH_CONFIG=ARM64 MACHINE_CONFIG=T6000 ./build.sh --kc
+KERNEL_CONFIG=RELEASE ARCH_CONFIG=ARM64 MACHINE_CONFIG=VMAPPLE ./build.sh --kc
 ```
 
 > [!NOTE]
@@ -149,13 +149,13 @@ Flags         = None
 ### Clean rebuild the kernel and kernel collection
 
 ```bash
-KERNEL_CONFIG=RELEASE ARCH_CONFIG=ARM64 MACHINE_CONFIG=T6000 ./build.sh --clean --kc
+MACOS_VERSION='15.0' KERNEL_CONFIG=RELEASE ARCH_CONFIG=ARM64 MACHINE_CONFIG=VMAPPLE ./build.sh --clean --kc
 ```
 
 ### Generate a CodeQL database
 
 ```bash
-./codeql.sh
+MACOS_VERSION='15.0' KERNEL_CONFIG=RELEASE ARCH_CONFIG=ARM64 MACHINE_CONFIG=VMAPPLE ./codeql.sh
 ```
 ```bash
 <SNIP>
