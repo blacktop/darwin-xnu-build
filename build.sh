@@ -39,7 +39,7 @@ function error() {
 : ${JSONDB:=0}
 : ${BUILDKC:=0}
 : ${CODEQL:=0}
-: ${KC_FILTER:='com.apple.driver.SEPHibernation'}
+: ${KC_FILTER:='com.apple.driver.SEPHibernation|com.apple.driver.ExclavesAudioKext|com.apple.driver.AppleH11ANEInterface|com.apple.driver.AppleFirmwareKit|com.apple.driver.AppleARMWatchdogTimer'}
 
 WORK_DIR="$PWD"
 CACHE_DIR="${WORK_DIR}/.cache"
