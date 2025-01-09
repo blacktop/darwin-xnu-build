@@ -1,7 +1,7 @@
 {
     "codeQL.githubDatabase.update": "never",
     "C_Cpp.intelliSenseEngine": "disabled",
-    "clangd.path": "clangd",
+    "clangd.path": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clangd",
     "clangd.arguments": [
         "-log=verbose",
         "-pretty",
