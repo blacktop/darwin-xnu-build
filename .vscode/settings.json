@@ -1,0 +1,13 @@
+{
+    "codeQL.githubDatabase.update": "never",
+    "C_Cpp.intelliSenseEngine": "disabled",
+    "clangd.path": "clangd",
+    "clangd.arguments": [
+        "-log=verbose",
+        "-pretty",
+        "--background-index",
+        //"--query-driver=/bin/arm-buildroot-linux-gnueabihf-g++", //for cross compile usage
+        "--compile-commands-dir=${workspaceFolder}/build/xnu-compiledb.obj/RELEASE_ARM64_VMAPPLE",
+    ],
+    "editor.formatOnSave": false
+}
