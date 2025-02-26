@@ -5,6 +5,7 @@
 set -o errexit
 set -o nounset
 set -o pipefail
+shopt -s nullglob
 if [[ "${TRACE-0}" == "1" ]]; then
     set -o xtrace
 fi
