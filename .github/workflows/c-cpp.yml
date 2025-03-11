@@ -19,7 +19,7 @@ jobs:
     runs-on: macos-latest
     strategy:
       matrix:
-        macos-version: [ '15.2' ]
+        macos-version: [ '15.3' ]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
