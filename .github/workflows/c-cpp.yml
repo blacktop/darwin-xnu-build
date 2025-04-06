@@ -46,10 +46,11 @@ jobs:
       #     path: .cache/${{ matrix.macos-version }}/compile_commands.json
       #     key: ${{ matrix.macos-version }}-jsondb
 
-      # - name: Build XNU JSON compilation database
-      #   if: steps.cache-jsondb.outputs.cache-hit != 'true'
-      #   run: |
-      #     MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=VMAPPLE JSONDB=1 bash -x build.sh
+      - name: Build XNU JSON compilation database
+        if: steps.cache-jsondb.outputs.cache-hit != 'true'
+        run: |
+          MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=VMAPPLE JSONDB=1 bash -x build.sh
+          zip -r xnu-${{ matrix.macos-version }}-jsondb.zip .cache/${{ matrix.macos-version }}/compile_commands.json
 
       - name: Build XNU
         run: |
@@ -87,3 +88,4 @@ jobs:
           gh release upload v${{ matrix.macos-version }} --clobber kernel.release.vmapple.sha256
           gh release upload v${{ matrix.macos-version }} --clobber xnu-codeql.zip
           gh release upload v${{ matrix.macos-version }} --clobber xnu-codeql.zip.sha256
+          gh release upload v${{ matrix.macos-version }} --clobber xnu-${{ matrix.macos-version }}-jsondb.zip
