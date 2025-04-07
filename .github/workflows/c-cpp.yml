@@ -50,7 +50,7 @@ jobs:
         if: steps.cache-jsondb.outputs.cache-hit != 'true'
         run: |
           MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=VMAPPLE JSONDB=1 bash -x build.sh
-          zip -r xnu-${{ matrix.macos-version }}-jsondb.zip .cache/${{ matrix.macos-version }}/compile_commands.json
+          zip -j xnu-${{ matrix.macos-version }}-jsondb.zip .cache/${{ matrix.macos-version }}/compile_commands.json
 
       - name: Build XNU
         run: |
