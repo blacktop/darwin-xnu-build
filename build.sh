@@ -132,7 +132,7 @@ install_ipsw() {
 choose_xnu() {
     if [ -z "$MACOS_VERSION" ]; then
         gum style --border normal --margin "1" --padding "1 2" --border-foreground 212 "Choose $(gum style --foreground 212 'macOS') version to build:"
-        MACOS_VERSION=$(gum choose "12.5" "13.0" "13.1" "13.2" "13.3" "13.4" "13.5" "14.0" "14.1" "14.2" "14.3" "14.4" "14.5" "14.6" "15.0" "15.1" "15.2" "15.3" "15.4")
+        MACOS_VERSION=$(gum choose "12.5" "13.0" "13.1" "13.2" "13.3" "13.4" "13.5" "14.0" "14.1" "14.2" "14.3" "14.4" "14.5" "14.6" "15.0" "15.1" "15.2" "15.3" "15.4" "15.5")
     fi
     TIGHTBEAMC="tightbeamc-not-supported"
     case ${MACOS_VERSION} in
@@ -250,6 +250,12 @@ choose_xnu() {
         KDKROOT='/Library/Developer/KDKs/KDK_15.4_24E248.kdk'
         RC_DARWIN_KERNEL_VERSION='24.4.0'
         ;;
+    '15.5')
+        RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-155/release.json'
+        KDK_NAME='Kernel Debug Kit 15.5 build 24F74'
+        KDKROOT='/Library/Developer/KDKs/KDK_15.5_24F74.kdk'
+        RC_DARWIN_KERNEL_VERSION='24.5.0'
+        ;;
     *)
         error "Invalid xnu version"
         exit 1
@@ -315,7 +321,7 @@ patches() {
         '14.4' | '14.5')
             PATCH_DIR="${WORK_DIR}/patches/14.4"
             ;;
-        '14.6' | '15.0' | '15.1' | '15.2' | '15.3' | '15.4')
+        '14.6' | '15.0' | '15.1' | '15.2' | '15.3' | '15.4' | '15.5')
             PATCH_DIR="${WORK_DIR}/patches/15.0"
             ;;
         *)

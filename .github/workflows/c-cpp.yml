@@ -19,7 +19,7 @@ jobs:
     runs-on: macos-latest
     strategy:
       matrix:
-        macos-version: [ '15.4' ]
+        macos-version: [ '15.5' ]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,7 +31,7 @@ jobs:
           # brew update
           brew install bash blacktop/tap/ipsw
           # sudo ipsw dl kdk --host --install
-          sudo xcode-select -s /Applications/Xcode_16.2.app
+          sudo xcode-select -s /Applications/Xcode_16.3.app
 
       - name: kmutil help # This is to check for what flags are available
         run: |
