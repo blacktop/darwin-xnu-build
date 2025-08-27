@@ -34,9 +34,10 @@
 | macOS 15.3 |    ✅     | [DB](https://github.com/blacktop/darwin-xnu-build/releases/download/v15.3/xnu-codeql.zip) |    ❔       /     ❔     |
 | macOS 15.4 |    ✅     | [DB](https://github.com/blacktop/darwin-xnu-build/releases/download/v15.4/xnu-codeql.zip) |    ❔       /     ❔     |
 | macOS 15.5 |    ✅     | [DB](https://github.com/blacktop/darwin-xnu-build/releases/download/v15.5/xnu-codeql.zip) |    ❔       /     ❔     |
+| macOS 15.6 |    🚧     | [DB](https://github.com/blacktop/darwin-xnu-build/releases/download/v15.6/xnu-codeql.zip) |    ❔       /     ❔     |
 
 > [!NOTE]
-> CodeQL DBs built with `MACHINE_CONFIG=VMAPPLE`  
+> CodeQL DBs built with `MACHINE_CONFIG=VMAPPLE`
 > MacOS `14.3` booted:
 > - via Virtualization.framework with `MACHINE_CONFIG=VMAPPLE`
 > - via qemu with `ARCH_CONFIG=x86_64`
@@ -49,7 +50,7 @@ Currently `MACHINE_CONFIG=T8103` is not correctly building for at least `14.3`
 > [!NOTE]
 > When attempting to boot try adding the boot-arg: `sudo nvram boot-args="-unsafe_kernel_text"`
 
-> [!WARNING]  
+> [!WARNING]
 > Booting VMAPPLE kernels in VMs only works on Apple M1s [see issue](https://github.com/blacktop/darwin-xnu-build/issues/22)
 
 ## Why? 🤔
