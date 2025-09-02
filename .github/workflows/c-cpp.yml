@@ -9,6 +9,7 @@ on:
       - .cirrus.yml
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.ref }}
