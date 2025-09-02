@@ -31,6 +31,9 @@ jobs:
         run: |
           # brew update
           brew install bash blacktop/tap/ipsw
+          # cmake brew fix TODO remove when fixed
+          brew uninstall cmake || true
+          brew install cmake
           # sudo ipsw dl kdk --host --install
           sudo xcode-select -s /Applications/Xcode_16.2.app
 
