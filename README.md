@@ -50,9 +50,6 @@ Currently `MACHINE_CONFIG=T8103` is not correctly building for at least `14.3`
 > [!NOTE]
 > When attempting to boot try adding the boot-arg: `sudo nvram boot-args="-unsafe_kernel_text"`
 
-> [!WARNING]
-> Booting VMAPPLE kernels in VMs only works on Apple M1s [see issue](https://github.com/blacktop/darwin-xnu-build/issues/22)
-
 ## Why? 🤔
 
 I'm hoping to patch and build the xnu source in interesting ways to aid in research and development of macOS/iOS security research tools as well as generate [CodeQL](https://securitylab.github.com/tools/codeql) databases for the community to use.
