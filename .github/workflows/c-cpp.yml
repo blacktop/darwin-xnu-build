@@ -35,7 +35,7 @@ jobs:
           brew uninstall cmake || true
           brew install cmake
           # sudo ipsw dl kdk --host --install
-          sudo xcode-select -s /Applications/Xcode_16.2.app
+          sudo xcode-select -s /Applications/Xcode_26.0.app
 
       - name: kmutil help # This is to check for what flags are available
         run: |
