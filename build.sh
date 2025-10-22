@@ -132,7 +132,7 @@ install_ipsw() {
 choose_xnu() {
     if [ -z "$MACOS_VERSION" ]; then
         gum style --border normal --margin "1" --padding "1 2" --border-foreground 212 "Choose $(gum style --foreground 212 'macOS') version to build:"
-        MACOS_VERSION=$(gum choose "12.5" "13.0" "13.1" "13.2" "13.3" "13.4" "13.5" "14.0" "14.1" "14.2" "14.3" "14.4" "14.5" "14.6" "15.0" "15.1" "15.2" "15.3" "15.4" "15.5" "15.6")
+        MACOS_VERSION=$(gum choose "12.5" "13.0" "13.1" "13.2" "13.3" "13.4" "13.5" "14.0" "14.1" "14.2" "14.3" "14.4" "14.5" "14.6" "15.0" "15.1" "15.2" "15.3" "15.4" "15.5" "15.6" "26.0")
     fi
     TIGHTBEAMC="tightbeamc-not-supported"
     case ${MACOS_VERSION} in
@@ -262,6 +262,12 @@ choose_xnu() {
         KDKROOT='/Library/Developer/KDKs/KDK_15.6_24G84.kdk'
         RC_DARWIN_KERNEL_VERSION='24.6.0'
         ;;
+    '26.0')
+        RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-260/release.json'
+        KDK_NAME='Kernel Debug Kit 26 build 25A353'
+        KDKROOT='/Library/Developer/KDKs/KDK_26.0_25A353.kdk/'
+        RC_DARWIN_KERNEL_VERSION='24.6.0'
+        ;;
     *)
         error "Invalid xnu version"
         exit 1
@@ -327,7 +333,7 @@ patches() {
         '14.4' | '14.5')
             PATCH_DIR="${WORK_DIR}/patches/14.4"
             ;;
-        '14.6' | '15.0' | '15.1' | '15.2' | '15.3' | '15.4' | '15.5' | '15.6')
+        '14.6' | '15.0' | '15.1' | '15.2' | '15.3' | '15.4' | '15.5' | '15.6' | '26.0')
             PATCH_DIR="${WORK_DIR}/patches/15.0"
             ;;
         *)

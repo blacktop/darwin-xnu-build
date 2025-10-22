@@ -2,13 +2,13 @@ name: XNU CodeQL
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     paths-ignore:
       - "*.md"
       - Makefile
       - .cirrus.yml
   pull_request:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
@@ -20,7 +20,7 @@ jobs:
     runs-on: macos-latest
     strategy:
       matrix:
-        macos-version: [ '15.6' ]
+        macos-version: ["26.0"]
     steps:
       - name: Checkout
         uses: actions/checkout@v5
