@@ -266,7 +266,7 @@ choose_xnu() {
         RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-260/release.json'
         KDK_NAME='Kernel Debug Kit 26 build 25A353'
         KDKROOT='/Library/Developer/KDKs/KDK_26.0_25A353.kdk/'
-        RC_DARWIN_KERNEL_VERSION='24.6.0'
+        RC_DARWIN_KERNEL_VERSION='25.0.0'
         ;;
     *)
         error "Invalid xnu version"
