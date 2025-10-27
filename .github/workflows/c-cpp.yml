@@ -65,7 +65,7 @@ jobs:
           echo "$(shasum -a 256 kernel.release.vmapple)"
           shasum -a 256 kernel.release.vmapple > kernel.release.vmapple.sha256
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: xnu-build-${{ matrix.macos-version }}
           path: |
@@ -78,7 +78,7 @@ jobs:
           echo "$(shasum -a 256 xnu-codeql.zip)"
           shasum -a 256 xnu-codeql.zip > xnu-codeql.zip.sha256
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: xnu-codeql-${{ matrix.macos-version }}
           path: xnu-codeql.zip
