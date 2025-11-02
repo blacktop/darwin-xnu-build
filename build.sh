@@ -38,8 +38,13 @@ function error() {
 : ${MACOS_VERSION:=""}
 : ${JSONDB:=0}
 : ${BUILDKC:=0}
+: ${BUILDLIB:=0}
 : ${CODEQL:=0}
 : ${KC_FILTER:='com.apple.driver.SEPHibernation|com.apple.driver.ExclavesAudioKext|com.apple.driver.AppleH11ANEInterface|com.apple.driver.AppleFirmwareKit|com.apple.driver.AppleARMWatchdogTimer'}
+: ${MEMORY_SIZE_OVERRIDE:=}
+: ${PHYS_CPU_OVERRIDE:=}
+: ${LOGICAL_CPU_OVERRIDE:=}
+: ${KERNEL_PARALLELISM_OVERRIDE:=}
 
 WORK_DIR="$PWD"
 CACHE_DIR="${WORK_DIR}/.cache"
@@ -62,6 +67,7 @@ Where:
     -h|--help       show this help text
     -c|--clean      cleans build artifacts and cloned repos
     -k|--kc         create kernel collection (via kmutil create)
+    --lib           build the libkernel archive (RC_ProjectName=xnu_libraries)
 '
     exit 0
 }
@@ -493,6 +499,47 @@ build_libdispatch() {
     fi
 }
 
+ensure_hw_env_overrides() {
+    if [ -n "${MEMORY_SIZE_OVERRIDE}" ] && [ -n "${PHYS_CPU_OVERRIDE}" ] && [ -n "${LOGICAL_CPU_OVERRIDE}" ] && [ -n "${KERNEL_PARALLELISM_OVERRIDE}" ]; then
+        return
+    fi
+    local mem_bytes phys_cpu log_cpu
+    mem_bytes=$(/usr/sbin/sysctl -n hw.memsize 2>/dev/null || true)
+    if ! [[ "${mem_bytes:-}" =~ ^[0-9]+$ ]]; then
+        mem_bytes=$(python3 -c 'import os, sys
+try:
+    pages = os.sysconf("SC_PHYS_PAGES")
+    page_size = os.sysconf("SC_PAGE_SIZE")
+except (AttributeError, ValueError, OSError):
+    sys.exit(1)
+if pages is None or page_size is None or pages <= 0 or page_size <= 0:
+    sys.exit(1)
+print(pages * page_size)' 2>/dev/null || true)
+    fi
+    if ! [[ "${mem_bytes:-}" =~ ^[0-9]+$ ]]; then
+        mem_bytes=1073741824
+    fi
+    phys_cpu=$(/usr/sbin/sysctl -n hw.physicalcpu 2>/dev/null || true)
+    if ! [[ "${phys_cpu:-}" =~ ^[0-9]+$ ]]; then
+        phys_cpu=$(python3 -c 'import os, sys
+count = os.cpu_count()
+if count is None or count <= 0:
+    sys.exit(1)
+print(count)' 2>/dev/null || true)
+    fi
+    if ! [[ "${phys_cpu:-}" =~ ^[0-9]+$ ]]; then
+        phys_cpu=1
+    fi
+    log_cpu=$(/usr/sbin/sysctl -n hw.logicalcpu 2>/dev/null || true)
+    if ! [[ "${log_cpu:-}" =~ ^[0-9]+$ ]]; then
+        log_cpu=${phys_cpu}
+    fi
+    MEMORY_SIZE_OVERRIDE="${mem_bytes}"
+    PHYS_CPU_OVERRIDE="${phys_cpu}"
+    LOGICAL_CPU_OVERRIDE="${log_cpu}"
+    KERNEL_PARALLELISM_OVERRIDE=1
+}
+
 build_xnu() {
     if [ ! -f "${BUILD_DIR}/xnu.obj/kernel.${KERNEL_TYPE}" ]; then
         if [ "$JSONDB" -ne "0" ]; then
@@ -501,13 +548,14 @@ build_xnu() {
                 error "KDKROOT not found: ${KDKROOT} - please install from the Developer Portal"
                 exit 1
             fi
+            ensure_hw_env_overrides
             SRCROOT="${WORK_DIR}/xnu"
             OBJROOT="${BUILD_DIR}/xnu-compiledb.obj"
             SYMROOT="${BUILD_DIR}/xnu-compiledb.sym"
             rm -rf "${OBJROOT}"
             rm -rf "${SYMROOT}"
             cd "${SRCROOT}"
-            make SDKROOT=macosx TARGET_CONFIGS="$KERNEL_CONFIG $ARCH_CONFIG $MACHINE_CONFIG" LOGCOLORS=y BUILD_WERROR=0 BUILD_LTO=0 BUILD_JSON_COMPILATION_DATABASE=1 SRCROOT="${SRCROOT}" OBJROOT="${OBJROOT}" SYMROOT="${SYMROOT}" DSTROOT="${DSTROOT}" FAKEROOT_DIR="${FAKEROOT_DIR}" KDKROOT="${KDKROOT}" TIGHTBEAMC=${TIGHTBEAMC} RC_DARWIN_KERNEL_VERSION=${RC_DARWIN_KERNEL_VERSION} || true
+            make SDKROOT=macosx TARGET_CONFIGS="$KERNEL_CONFIG $ARCH_CONFIG $MACHINE_CONFIG" LOGCOLORS=y BUILD_WERROR=0 BUILD_LTO=0 BUILD_JSON_COMPILATION_DATABASE=1 SRCROOT="${SRCROOT}" OBJROOT="${OBJROOT}" SYMROOT="${SYMROOT}" DSTROOT="${DSTROOT}" FAKEROOT_DIR="${FAKEROOT_DIR}" KDKROOT="${KDKROOT}" TIGHTBEAMC=${TIGHTBEAMC} RC_DARWIN_KERNEL_VERSION=${RC_DARWIN_KERNEL_VERSION} MEMORY_SIZE="${MEMORY_SIZE_OVERRIDE}" SYSCTL_HW_PHYSICALCPU="${PHYS_CPU_OVERRIDE}" SYSCTL_HW_LOGICALCPU="${LOGICAL_CPU_OVERRIDE}" KERNEL_BUILDS_IN_PARALLEL="${KERNEL_PARALLELISM_OVERRIDE:-1}" || true
             JSON_COMPILE_DB="$(find "${OBJROOT}" -name compile_commands.json)"
             info "JSON compilation database: ${JSON_COMPILE_DB}"
             cp -f "${JSON_COMPILE_DB}" "${SRCROOT}"
@@ -520,15 +568,47 @@ build_xnu() {
                 error "KDKROOT not found: ${KDKROOT} - please install from the Developer Portal"
                 exit 1
             fi
+            ensure_hw_env_overrides
             SRCROOT="${WORK_DIR}/xnu"
             OBJROOT="${BUILD_DIR}/xnu.obj"
             SYMROOT="${BUILD_DIR}/xnu.sym"
             cd "${SRCROOT}"
-            make install -j8 VERBOSE=YES SDKROOT=macosx TARGET_CONFIGS="$KERNEL_CONFIG $ARCH_CONFIG $MACHINE_CONFIG" CONCISE=0 LOGCOLORS=y BUILD_WERROR=0 BUILD_LTO=0 SRCROOT="${SRCROOT}" OBJROOT="${OBJROOT}" SYMROOT="${SYMROOT}" DSTROOT="${DSTROOT}" FAKEROOT_DIR="${FAKEROOT_DIR}" KDKROOT="${KDKROOT}" TIGHTBEAMC=${TIGHTBEAMC} RC_DARWIN_KERNEL_VERSION=${RC_DARWIN_KERNEL_VERSION}
+            make install -j8 VERBOSE=YES SDKROOT=macosx TARGET_CONFIGS="$KERNEL_CONFIG $ARCH_CONFIG $MACHINE_CONFIG" CONCISE=0 LOGCOLORS=y BUILD_WERROR=0 BUILD_LTO=0 SRCROOT="${SRCROOT}" OBJROOT="${OBJROOT}" SYMROOT="${SYMROOT}" DSTROOT="${DSTROOT}" FAKEROOT_DIR="${FAKEROOT_DIR}" KDKROOT="${KDKROOT}" TIGHTBEAMC=${TIGHTBEAMC} RC_DARWIN_KERNEL_VERSION=${RC_DARWIN_KERNEL_VERSION} MEMORY_SIZE="${MEMORY_SIZE_OVERRIDE}" SYSCTL_HW_PHYSICALCPU="${PHYS_CPU_OVERRIDE}" SYSCTL_HW_LOGICALCPU="${LOGICAL_CPU_OVERRIDE}" KERNEL_BUILDS_IN_PARALLEL="${KERNEL_PARALLELISM_OVERRIDE:-1}"
             cd "${WORK_DIR}"
         fi
     else
         info "📦 XNU kernel.${KERNEL_TYPE} already built"
+    fi
+}
+
+build_xnu_library() {
+    local lib_objroot="${BUILD_DIR}/xnu-lib.obj"
+    local lib_symroot="${BUILD_DIR}/xnu-lib.sym"
+    local lib_archive="${lib_objroot}/libkernel.${KERNEL_TYPE}.a"
+    if [ ! -f "${lib_archive}" ]; then
+        running "📦 Building XNU library libkernel.${KERNEL_TYPE}.a"
+        if [ ! -d "${KDKROOT}" ]; then
+            error "KDKROOT not found: ${KDKROOT} - please install from the Developer Portal"
+            exit 1
+        fi
+        SRCROOT="${WORK_DIR}/xnu"
+        OBJROOT="${lib_objroot}"
+        SYMROOT="${lib_symroot}"
+        local lib_flavour="${XNU_LIB_FLAVOUR:-${MACHINE_CONFIG}}"
+        local -a lib_env=("RC_ProjectName=xnu_libraries" "XNU_LibFlavour=${lib_flavour}")
+        ensure_hw_env_overrides
+        if [ -n "${XNU_LIB_ALL_FILES:-}" ]; then
+            lib_env+=("XNU_LibAllFiles=${XNU_LIB_ALL_FILES}")
+        fi
+        cd "${SRCROOT}"
+        env "${lib_env[@]}" \
+            make install -j8 VERBOSE=YES SDKROOT=macosx TARGET_CONFIGS="$KERNEL_CONFIG $ARCH_CONFIG $MACHINE_CONFIG" CONCISE=0 LOGCOLORS=y BUILD_WERROR=0 BUILD_LTO=0 SRCROOT="${SRCROOT}" OBJROOT="${OBJROOT}" SYMROOT="${SYMROOT}" DSTROOT="${DSTROOT}" FAKEROOT_DIR="${FAKEROOT_DIR}" KDKROOT="${KDKROOT}" TIGHTBEAMC=${TIGHTBEAMC} RC_DARWIN_KERNEL_VERSION=${RC_DARWIN_KERNEL_VERSION} MEMORY_SIZE="${MEMORY_SIZE_OVERRIDE}" SYSCTL_HW_PHYSICALCPU="${PHYS_CPU_OVERRIDE}" SYSCTL_HW_LOGICALCPU="${LOGICAL_CPU_OVERRIDE}" KERNEL_BUILDS_IN_PARALLEL="${KERNEL_PARALLELISM_OVERRIDE:-1}"
+        cd "${WORK_DIR}"
+        if [ -f "${lib_archive}" ]; then
+            info "📦 Created ${lib_archive}"
+        fi
+    else
+        info "📦 XNU library libkernel.${KERNEL_TYPE}.a already built"
     fi
 }
 
@@ -541,6 +621,10 @@ version_lt() {
 }
 
 build_kc() {
+    if [ "$BUILDLIB" -ne "0" ]; then
+        info "Skipping kernel collection build because --lib was requested"
+        return
+    fi
     if [ -f "${BUILD_DIR}/xnu.obj/kernel.${KERNEL_TYPE}" ]; then
         running "📦 Building kernel collection for kernel.${KERNEL_TYPE}"
         KDK_FLAG=""
@@ -583,6 +667,10 @@ main() {
             BUILDKC=1
             shift
             ;;
+        --lib)
+            BUILDLIB=1
+            shift
+            ;;
         *)
             break
             ;;
@@ -601,8 +689,13 @@ main() {
     libsyscall_headers
     build_libplatform
     build_libdispatch
-    build_xnu
-    echo "  🎉 XNU Build Done!"
+    if [ "$BUILDLIB" -ne "0" ]; then
+        build_xnu_library
+        echo "  🎉 XNU Library Build Done!"
+    else
+        build_xnu
+        echo "  🎉 XNU Build Done!"
+    fi
     if [ "$BUILDKC" -ne "0" ]; then
         install_ipsw
         build_kc

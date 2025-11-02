@@ -35,7 +35,7 @@
 | macOS 15.4 |    ✅     | [DB](https://github.com/blacktop/darwin-xnu-build/releases/download/v15.4/xnu-codeql.zip) |    ❔       /     ❔     |
 | macOS 15.5 |    ✅     | [DB](https://github.com/blacktop/darwin-xnu-build/releases/download/v15.5/xnu-codeql.zip) |    ❔       /     ❔     |
 | macOS 15.6 |    ✅     | [DB](https://github.com/blacktop/darwin-xnu-build/releases/download/v15.6/xnu-codeql.zip) |    ✅       /     ❔     |
-| macOS 26.0 |    ✅     | [DB](https://github.com/blacktop/darwin-xnu-build/releases/download/v26.0/xnu-codeql.zip) |    ❔       /     ❔     |
+| macOS 26.0 |    ✅     | [DB](https://github.com/blacktop/darwin-xnu-build/releases/download/v26.0/xnu-codeql-26.0.zip) |    ❔       /     ❔     |
 
 > [!NOTE]
 > CodeQL DBs built with `MACHINE_CONFIG=VMAPPLE`
@@ -153,6 +153,20 @@ Flags         = None
 <SNIP>
 ```
 
+### Build the XNU library (macOS 26.0+)
+
+```bash
+MACOS_VERSION='26.0' KERNEL_CONFIG=RELEASE ARCH_CONFIG=ARM64 MACHINE_CONFIG=VMAPPLE ./build.sh --lib
+```
+
+This toggles Apple's `RC_ProjectName=xnu_libraries` path and drops the archive plus metadata into `build/xnu-lib.obj/`:
+
+- `build/xnu-lib.obj/libkernel.release.vmapple.a`
+- `build/xnu-lib.obj/RELEASE_ARM64_VMAPPLE/*.libfilelist`
+- `build/xnu-lib.obj/RELEASE_ARM64_VMAPPLE/all-{alias,kpi}.exp`
+
+Every GitHub release also publishes a pre-packed `xnu-lib-<version>.tar.gz` bundle mirroring the layout above, so researchers without a local build host can download the archive and supporting lists directly.
+
 ### Clean rebuild the kernel and kernel collection
 
 ```bash
@@ -179,8 +193,8 @@ Successfully created database at darwin-xnu-build/xnu-codeql.
 Script builds and zips up the CodeQL database
 
 ```bash
-❯ ll xnu-codeql.zip
--rw-r--r--@ 1 blacktop  staff   219M Mar  3 22:35 xnu-codeql.zip
+❯ ll xnu-codeql-<macOS_version>.zip
+-rw-r--r--@ 1 blacktop  staff   219M Mar  3 22:35 xnu-codeql-<macOS_version>.zip
 ```
 
 ### Generate a CodeQL database *(in a `local` **Tart** VM)*

@@ -65,6 +65,13 @@ jobs:
           echo "$(shasum -a 256 kernel.release.vmapple)"
           shasum -a 256 kernel.release.vmapple > kernel.release.vmapple.sha256
 
+      - name: Build XNU library
+        run: |
+          MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=VMAPPLE bash -x build.sh --lib
+          tar -czf xnu-lib-${{ matrix.macos-version }}.tar.gz -C build/xnu-lib.obj libkernel.release.vmapple.a RELEASE_ARM64_VMAPPLE
+          echo "$(shasum -a 256 xnu-lib-${{ matrix.macos-version }}.tar.gz)"
+          shasum -a 256 xnu-lib-${{ matrix.macos-version }}.tar.gz > xnu-lib-${{ matrix.macos-version }}.tar.gz.sha256
+
       - uses: actions/upload-artifact@v5
         with:
           name: xnu-build-${{ matrix.macos-version }}
@@ -72,16 +79,26 @@ jobs:
             fakeroot/System/Library/Kernels/
             # fakeroot/oss-xnu.macOS.${{ matrix.macos-version }}.kc.vmapple
 
+      - uses: actions/upload-artifact@v5
+        with:
+          name: xnu-lib-${{ matrix.macos-version }}
+          path: |
+            xnu-lib-${{ matrix.macos-version }}.tar.gz
+            xnu-lib-${{ matrix.macos-version }}.tar.gz.sha256
+
       - name: Build XNU CodeQL Database
         run: |
           MACOS_VERSION='${{ matrix.macos-version }}' MACHINE_CONFIG=VMAPPLE bash -x codeql.sh
-          echo "$(shasum -a 256 xnu-codeql.zip)"
-          shasum -a 256 xnu-codeql.zip > xnu-codeql.zip.sha256
+          mv xnu-codeql.zip xnu-codeql-${{ matrix.macos-version }}.zip
+          echo "$(shasum -a 256 xnu-codeql-${{ matrix.macos-version }}.zip)"
+          shasum -a 256 xnu-codeql-${{ matrix.macos-version }}.zip > xnu-codeql-${{ matrix.macos-version }}.zip.sha256
 
       - uses: actions/upload-artifact@v5
         with:
           name: xnu-codeql-${{ matrix.macos-version }}
-          path: xnu-codeql.zip
+          path: |
+            xnu-codeql-${{ matrix.macos-version }}.zip
+            xnu-codeql-${{ matrix.macos-version }}.zip.sha256
 
       - name: Release
         env:
@@ -90,6 +107,8 @@ jobs:
           ls -lah
           gh release upload v${{ matrix.macos-version }} --clobber kernel.release.vmapple
           gh release upload v${{ matrix.macos-version }} --clobber kernel.release.vmapple.sha256
-          gh release upload v${{ matrix.macos-version }} --clobber xnu-codeql.zip
-          gh release upload v${{ matrix.macos-version }} --clobber xnu-codeql.zip.sha256
+          gh release upload v${{ matrix.macos-version }} --clobber xnu-codeql-${{ matrix.macos-version }}.zip
+          gh release upload v${{ matrix.macos-version }} --clobber xnu-codeql-${{ matrix.macos-version }}.zip.sha256
           gh release upload v${{ matrix.macos-version }} --clobber xnu-${{ matrix.macos-version }}-jsondb.zip
+          gh release upload v${{ matrix.macos-version }} --clobber xnu-lib-${{ matrix.macos-version }}.tar.gz
+          gh release upload v${{ matrix.macos-version }} --clobber xnu-lib-${{ matrix.macos-version }}.tar.gz.sha256
