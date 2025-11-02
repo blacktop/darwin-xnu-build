@@ -33,7 +33,7 @@ clean:
 	@rm -rf ./artifacts
 	@rm -rf ./venv
 	@rm -rf ./xnu-codeql
-	@rm xnu-codeql.zip
+	@rm xnu-codeql.zip || true
 	@echo " 🎉 Done! 🎉"
 
 .DEFAULT_GOAL := build-vm
