@@ -1,0 +1,17 @@
+diff --git a/osfmk/vm/vm_resident.c b/osfmk/vm/vm_resident.c
+index 6bf2c39..1f43374 100644
+--- a/osfmk/vm/vm_resident.c
++++ b/osfmk/vm/vm_resident.c
+@@ -61,7 +61,6 @@
+  *
+  *	Resident memory management module.
+  */
+-#include <AppleFeatures.h>
+ #include <debug.h>
+ #include <libkern/OSDebug.h>
+ 
+@@ -11363,4 +11362,3 @@ vm_retire_boot_pages(void)
+  * SMC will store it in PMU SRAM under the 'sECC' key.
+  */
+ uint64_t ecc_panic_physical_address = 0;
+-

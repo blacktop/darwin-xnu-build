@@ -1,0 +1,15 @@
+diff --git a/makedefs/MakeInc.def b/makedefs/MakeInc.def
+index 3468fbff8..87bb7e540 100644
+--- a/makedefs/MakeInc.def
++++ b/makedefs/MakeInc.def
+@@ -1095,6 +1095,10 @@ LDFILES_KERNEL_ONLY = $(TARGET)/all-kpi.exp $(TARGET)/all-alias.exp $(TARGET)/sy
+ #
+ LD_KERNEL_LIBS	   = -lcc_kext
+ LD_KERNEL_ARCHIVES = $(LDFLAGS_KERNEL_SDK) -lfirehose_kernel
++# Link opensource binary library for VMAPPLE and specific SoCs
++ifneq ($(filter T6000 T6020 T8101 T8103 T8112 VMAPPLE,$(CURRENT_MACHINE_CONFIG)),)
++	LDFLAGS_KERNEL_ONLY += -rdynamic -Wl,-force_load,$(KDKROOT)/System/Library/KernelSupport/lib$(CURRENT_MACHINE_CONFIG).os.$(CURRENT_KERNEL_CONFIG).a
++endif
+
+ #
+ # Derive SPTM/TXM and Exclaves enablement from the EDM properties.
