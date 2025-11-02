@@ -12,8 +12,6 @@ This repository already ships a number of pre-made patches that soften the rough
 - `remove_tightbeam.patch`: clears `config/libTightbeam.exports` so the linker stops looking for private `_tb_*` entry points.
 
 ### Optional Quality-of-Life Patches
-- `iokit.patch`: reinstates `IORPCMessageFromMach()` exports for DriverKit user servers. The 26.0 OSS sources already build without it, but older tooling may rely on the symbol.
-- `skywalk.patch`: restores Field Packet Descriptor helpers (`kern_packet_set_fpd_*`). Useful when building networking clients that expect the FPD metadata, yet not required for the bare kernel link.
 - `disable_bti_vmapple.patch`: undefines `BTI_ENFORCED` just for VMAPPLE so BTI checks don't trip when booting the kernel inside Virtualization.framework guests.
 
 > Historical note: `disable_dtrace_vm_apple.patch` was used on older drops to sidestep assembler issues in SDT macros. The macOS 26.0 toolchain now builds without it, so the patch has been retired.
