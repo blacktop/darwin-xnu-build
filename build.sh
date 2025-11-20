@@ -31,6 +31,69 @@ function error() {
     echo -e "$COL_RED[error] $COL_RESET""$1"
 }
 
+function warning() {
+    echo -e "$COL_YELLOW[warning] $COL_RESET""$1"
+}
+
+# Setup Xcode toolchain environment
+# This protects against Homebrew's GNU coreutils or LLVM interfering with the build
+function setup_xcode_toolchain() {
+    # Get Xcode developer directory
+    local DEVELOPER_DIR
+    DEVELOPER_DIR="$(xcode-select -p 2>/dev/null || true)"
+
+    if [ -z "${DEVELOPER_DIR}" ] || [ ! -d "${DEVELOPER_DIR}" ]; then
+        error "Xcode Command Line Tools not found. Please run install_deps first."
+        return 1
+    fi
+
+    info "Using Xcode at: ${DEVELOPER_DIR}"
+
+    # Set DEVELOPER_DIR explicitly
+    export DEVELOPER_DIR
+
+    # Build a clean PATH that prioritizes Xcode tools over Homebrew
+    # This ensures we use Apple's toolchain, not GNU coreutils or Homebrew LLVM
+    local XCODE_TOOLCHAIN="${DEVELOPER_DIR}/Toolchains/XcodeDefault.xctoolchain/usr/bin"
+    local XCODE_USR_BIN="${DEVELOPER_DIR}/usr/bin"
+    local SYSTEM_PATHS="/usr/bin:/bin:/usr/sbin:/sbin"
+
+    # Only add Homebrew to the end if it exists, so user tools are still available
+    local HOMEBREW_PATHS=""
+    if [ -d "/opt/homebrew/bin" ]; then
+        HOMEBREW_PATHS=":/opt/homebrew/bin:/opt/homebrew/sbin"
+    elif [ -d "/usr/local/bin" ]; then
+        HOMEBREW_PATHS=":/usr/local/bin:/usr/local/sbin"
+    fi
+
+    export PATH="${XCODE_TOOLCHAIN}:${XCODE_USR_BIN}:${SYSTEM_PATHS}${HOMEBREW_PATHS}"
+
+    # Explicitly set compiler variables to Xcode's tools
+    export CC="$(xcrun -find clang)"
+    export CXX="$(xcrun -find clang++)"
+    export LD="$(xcrun -find ld)"
+    export AR="$(xcrun -find ar)"
+    export RANLIB="$(xcrun -find ranlib)"
+    export STRIP="$(xcrun -find strip)"
+    export LIBTOOL="$(xcrun -find libtool)"
+
+    # Verify we're using Xcode's clang, not Homebrew's
+    local CLANG_PATH
+    CLANG_PATH="$(which clang)"
+    if [[ ! "${CLANG_PATH}" =~ ^"${DEVELOPER_DIR}".* ]]; then
+        warning "clang is not from Xcode: ${CLANG_PATH}"
+        warning "This may cause build failures. Check your PATH."
+    else
+        info "Using Xcode clang: ${CLANG_PATH}"
+    fi
+
+    # Check for common Homebrew interference
+    if echo "${PATH}" | grep -q "/opt/homebrew/opt/coreutils" || echo "${PATH}" | grep -q "/opt/homebrew/opt/llvm"; then
+        warning "Detected Homebrew GNU coreutils or LLVM in PATH before system tools"
+        warning "This has been reordered to prioritize Xcode's toolchain"
+    fi
+}
+
 # Config
 : ${KERNEL_CONFIG:=RELEASE}
 : ${ARCH_CONFIG:=ARM64}
@@ -677,6 +740,7 @@ main() {
         esac
     done
     install_deps
+    setup_xcode_toolchain
     choose_xnu
     get_xnu
     patches
