@@ -1,0 +1,13 @@
+diff --git a/makedefs/MakeInc.kernel b/makedefs/MakeInc.kernel
+index a544e650f..a5dae38f7 100644
+--- a/makedefs/MakeInc.kernel
++++ b/makedefs/MakeInc.kernel
+@@ -173,7 +173,7 @@ endif
+ $(TARGET)/$(KERNEL_FILE_NAME).dSYM: $(TARGET)/$(KERNEL_FILE_NAME).unstripped.noctf
+ ifeq ($(BUILD_DSYM),1)
+ 	@$(LOG_DSYMUTIL) "$(@F)"
+-	$(_v)$(BASH) -c "$(DSYMUTIL) $(DSYMUTIL_FLAGS) $< -o $@ $(_vstdout) 2> >(grep -v '^warning:.*could not find object file symbol for symbol' 1>&2)"
++	$(_v)$(DSYMUTIL) $(DSYMUTIL_FLAGS) $< -o $@ $(_vstdout) $(_vstderr)
+ 	$(_v)$(MV) $@/$(DSYMDWARFDIR)/$(KERNEL_FILE_NAME).unstripped.noctf $@/$(DSYMDWARFDIR)/$(KERNEL_FILE_NAME)
+ else
+ 	$(_v)$(MKDIR) $@

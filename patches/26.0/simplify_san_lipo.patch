@@ -1,0 +1,14 @@
+diff --git a/makedefs/MakeInc.san b/makedefs/MakeInc.san
+index cf37fbacb..003cb004f 100644
+--- a/makedefs/MakeInc.san
++++ b/makedefs/MakeInc.san
+@@
+ $$(SYMROOT_KEXT_$(2)): $$(addsuffix /config/$(2).symbolset, \
+ 		$$(addprefix $$(OBJROOT)/,$$(foreach bc,$(3),$$(call function_convert_build_config_to_objdir,$$(bc)))))
+ 	@$$(LOG_INSTALLSYM) "$$(Color0)symbolset $$(ColorF)$(2)$$(Color0) ($$(ColorLF)$$(CURRENT_KERNEL_CONFIG_LC)$$(Color0))"
+ 	$$(_v)$$(MKDIR) $$(@D)
+-	$$(_v)$$(LIPO) -create `(echo $$^ | xargs -L 1 lipo -detailed_info) | \
+-		awk '/is architecture/ {s[$$$$6]=$$$$3} END {for (a in s) {print s[a]}}'` -output $$@ $$(_vstdout)
++	$$(_v)$$(LIPO) -create $$^ -output $$@ $$(_vstdout)
+ 
+ endef

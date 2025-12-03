@@ -4,7 +4,15 @@
 # This script creates the necessary directory structure and copies KDK headers
 
 EXTERNAL_HEADERS="./EXTERNAL_HEADERS"
-KDK_CE_PATH="/Library/Developer/KDKs/KDK_26.0_25A353.kdk/System/Library/Frameworks/Kernel.framework/Versions/A/PrivateHeaders/platform/CoreEntitlements"
+# Prefer the KDKROOT provided by build.sh, falling back to the known 26.1 then 26.0 KDKs.
+KDKROOT_CLEAN="${KDKROOT%/}"
+if [ -z "${KDKROOT_CLEAN}" ]; then
+    KDKROOT_CLEAN="/Library/Developer/KDKs/KDK_26.1_25B5062e.kdk"
+fi
+KDK_CE_PATH="${KDKROOT_CLEAN}/System/Library/Frameworks/Kernel.framework/Versions/A/PrivateHeaders/platform/CoreEntitlements"
+if [ ! -d "${KDK_CE_PATH}" ]; then
+    KDK_CE_PATH="/Library/Developer/KDKs/KDK_26.0_25A353.kdk/System/Library/Frameworks/Kernel.framework/Versions/A/PrivateHeaders/platform/CoreEntitlements"
+fi
 
 echo "Setting up CoreEntitlements V2 headers..."
 
