@@ -36,7 +36,7 @@
 | macOS 15.5 |    ✅     | [DB](https://github.com/blacktop/darwin-xnu-build/releases/download/v15.5/xnu-codeql.zip) |    ❔       /     ❔     |
 | macOS 15.6 |    ✅     | [DB](https://github.com/blacktop/darwin-xnu-build/releases/download/v15.6/xnu-codeql.zip) |    ✅       /     ❔     |
 | macOS 26.0 |    ✅     | [DB](https://github.com/blacktop/darwin-xnu-build/releases/download/v26.0/xnu-codeql-26.0.zip) |    ❔       /     ✅     |
-| macOS 26.1 |    ❔     | [DB](https://github.com/blacktop/darwin-xnu-build/releases/download/v26.1/xnu-codeql-26.1.zip) |    ❔       /     ❔     |
+| macOS 26.1 |    ✅     | [DB](https://github.com/blacktop/darwin-xnu-build/releases/download/v26.1/xnu-codeql-26.1.zip) |    ❔       /     ❔     |
 
 > [!NOTE]
 > CodeQL DBs built with `MACHINE_CONFIG=VMAPPLE`
