@@ -72,14 +72,14 @@ jobs:
           echo "$(shasum -a 256 xnu-lib-${{ matrix.macos-version }}.tar.gz)"
           shasum -a 256 xnu-lib-${{ matrix.macos-version }}.tar.gz > xnu-lib-${{ matrix.macos-version }}.tar.gz.sha256
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: xnu-build-${{ matrix.macos-version }}
           path: |
             fakeroot/System/Library/Kernels/
             # fakeroot/oss-xnu.macOS.${{ matrix.macos-version }}.kc.vmapple
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: xnu-lib-${{ matrix.macos-version }}
           path: |
@@ -93,7 +93,7 @@ jobs:
           echo "$(shasum -a 256 xnu-codeql-${{ matrix.macos-version }}.zip)"
           shasum -a 256 xnu-codeql-${{ matrix.macos-version }}.zip > xnu-codeql-${{ matrix.macos-version }}.zip.sha256
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: xnu-codeql-${{ matrix.macos-version }}
           path: |
