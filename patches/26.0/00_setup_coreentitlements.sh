@@ -4,14 +4,27 @@
 # This script creates the necessary directory structure and copies KDK headers
 
 EXTERNAL_HEADERS="./EXTERNAL_HEADERS"
-# Prefer the KDKROOT provided by build.sh, falling back to the known 26.1 then 26.0 KDKs.
+# Prefer the KDKROOT provided by build.sh, falling back to known 26.x KDKs.
 KDKROOT_CLEAN="${KDKROOT%/}"
-if [ -z "${KDKROOT_CLEAN}" ]; then
-    KDKROOT_CLEAN="/Library/Developer/KDKs/KDK_26.1_25B5062e.kdk"
+KDK_CE_PATH=""
+
+# Try KDKROOT from environment first
+if [ -n "${KDKROOT_CLEAN}" ] && [ -d "${KDKROOT_CLEAN}/System/Library/Frameworks/Kernel.framework/Versions/A/PrivateHeaders/platform/CoreEntitlements" ]; then
+    KDK_CE_PATH="${KDKROOT_CLEAN}/System/Library/Frameworks/Kernel.framework/Versions/A/PrivateHeaders/platform/CoreEntitlements"
 fi
-KDK_CE_PATH="${KDKROOT_CLEAN}/System/Library/Frameworks/Kernel.framework/Versions/A/PrivateHeaders/platform/CoreEntitlements"
-if [ ! -d "${KDK_CE_PATH}" ]; then
-    KDK_CE_PATH="/Library/Developer/KDKs/KDK_26.0_25A353.kdk/System/Library/Frameworks/Kernel.framework/Versions/A/PrivateHeaders/platform/CoreEntitlements"
+
+# Fallback: try known KDKs in reverse version order
+if [ -z "${KDK_CE_PATH}" ]; then
+    for KDK in /Library/Developer/KDKs/KDK_26.*.kdk; do
+        if [ -d "${KDK}/System/Library/Frameworks/Kernel.framework/Versions/A/PrivateHeaders/platform/CoreEntitlements" ]; then
+            KDK_CE_PATH="${KDK}/System/Library/Frameworks/Kernel.framework/Versions/A/PrivateHeaders/platform/CoreEntitlements"
+        fi
+    done
+fi
+
+if [ -z "${KDK_CE_PATH}" ]; then
+    echo "ERROR: No suitable KDK found for CoreEntitlements headers"
+    exit 1
 fi
 
 echo "Setting up CoreEntitlements V2 headers..."

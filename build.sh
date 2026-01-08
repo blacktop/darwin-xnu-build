@@ -201,7 +201,7 @@ install_ipsw() {
 choose_xnu() {
     if [ -z "$MACOS_VERSION" ]; then
         gum style --border normal --margin "1" --padding "1 2" --border-foreground 212 "Choose $(gum style --foreground 212 'macOS') version to build:"
-        MACOS_VERSION=$(gum choose "12.5" "13.0" "13.1" "13.2" "13.3" "13.4" "13.5" "14.0" "14.1" "14.2" "14.3" "14.4" "14.5" "14.6" "15.0" "15.1" "15.2" "15.3" "15.4" "15.5" "15.6" "26.0" "26.1")
+        MACOS_VERSION=$(gum choose "12.5" "13.0" "13.1" "13.2" "13.3" "13.4" "13.5" "14.0" "14.1" "14.2" "14.3" "14.4" "14.5" "14.6" "15.0" "15.1" "15.2" "15.3" "15.4" "15.5" "15.6" "26.0" "26.1" "26.2")
     fi
     TIGHTBEAMC="tightbeamc-not-supported"
     case ${MACOS_VERSION} in
@@ -344,6 +344,12 @@ choose_xnu() {
         KDK_NAME='Kernel Debug Kit 26.1 build 25B5062e'
         KDKROOT='/Library/Developer/KDKs/KDK_26.1_25B5062e.kdk/'
         RC_DARWIN_KERNEL_VERSION='25.1.0'
+        ;;
+    '26.2')
+        RELEASE_URL='https://raw.githubusercontent.com/apple-oss-distributions/distribution-macOS/macos-262/release.json'
+        KDK_NAME='Kernel Debug Kit 26.2 build 25C56'
+        KDKROOT='/Library/Developer/KDKs/KDK_26.2_25C56.kdk/'
+        RC_DARWIN_KERNEL_VERSION='25.2.0'
         ;;
     *)
         error "Invalid xnu version"
