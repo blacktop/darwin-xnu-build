@@ -135,9 +135,11 @@ struct firehose_buffer_range_s {
     uint16_t fbr_length;
 };
 
-#define FIREHOSE_BUFFER_KERNEL_CHUNK_COUNT 1
-#define FIREHOSE_BUFFER_KERNEL_DEFAULT_CHUNK_COUNT 64
-#define FIREHOSE_BUFFER_KERNEL_DEFAULT_IO_PAGES 0
+extern uint8_t __firehose_buffer_kernel_chunk_count;
+#define FIREHOSE_BUFFER_KERNEL_CHUNK_COUNT __firehose_buffer_kernel_chunk_count
+#define FIREHOSE_BUFFER_KERNEL_MIN_CHUNK_COUNT	16
+#define FIREHOSE_BUFFER_KERNEL_DEFAULT_CHUNK_COUNT FIREHOSE_BUFFER_KERNEL_MIN_CHUNK_COUNT
+#define FIREHOSE_BUFFER_KERNEL_DEFAULT_IO_PAGES    8
 
 __BEGIN_DECLS
 
@@ -155,7 +157,7 @@ void __firehose_allocate(vm_offset_t *addr, vm_size_t size);
 void __firehose_critical_region_enter(void);
 void __firehose_critical_region_leave(void);
 
-bool __firehose_kernel_configuration_valid(uint32_t chunk_count, uint32_t io_pages);
+bool __firehose_kernel_configuration_valid(uint8_t chunk_count, uint8_t io_pages);
 firehose_buffer_t __firehose_buffer_create(size_t *size);
 bool __firehose_merge_updates(firehose_push_reply_t reply);
 
