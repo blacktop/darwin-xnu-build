@@ -38,9 +38,9 @@ function warning() {
 # Setup Xcode toolchain environment
 # This protects against Homebrew's GNU coreutils or LLVM interfering with the build
 function setup_xcode_toolchain() {
-    # Get Xcode developer directory
-    local DEVELOPER_DIR
-    DEVELOPER_DIR="$(xcode-select -p 2>/dev/null || true)"
+    # Honor DEVELOPER_DIR from the environment so CI or a second Xcode install can pick the
+    # toolchain; otherwise use the xcode-select default.
+    DEVELOPER_DIR="${DEVELOPER_DIR:-$(xcode-select -p 2>/dev/null || true)}"
 
     if [ -z "${DEVELOPER_DIR}" ] || [ ! -d "${DEVELOPER_DIR}" ]; then
         error "Xcode Command Line Tools not found. Please run install_deps first."
@@ -196,7 +196,7 @@ install_ipsw() {
         running "Installing ipsw..."
         brew tap blacktop/tap
         # Homebrew 6 refuses formulae from non-official taps unless the tap is trusted
-        if brew trust --help > /dev/null 2>&1; then
+        if brew trust --help >/dev/null 2>&1; then
             brew trust blacktop/tap
         fi
         brew install blacktop/tap/ipsw
@@ -204,6 +204,7 @@ install_ipsw() {
 }
 
 choose_xnu() {
+    local kdkroot_override="${KDKROOT:-}"
     if [ -z "$MACOS_VERSION" ]; then
         gum style --border normal --margin "1" --padding "1 2" --border-foreground 212 "Choose $(gum style --foreground 212 'macOS') version to build:"
         MACOS_VERSION=$(gum choose "12.5" "13.0" "13.1" "13.2" "13.3" "13.4" "13.5" "14.0" "14.1" "14.2" "14.3" "14.4" "14.5" "14.6" "15.0" "15.1" "15.2" "15.3" "15.4" "15.5" "15.6" "26.0" "26.1" "26.2" "26.3" "26.4" "26.5")
@@ -379,6 +380,10 @@ choose_xnu() {
         exit 1
         ;;
     esac
+    if [ -n "${kdkroot_override}" ]; then
+        KDKROOT="${kdkroot_override}"
+        info "Using KDKROOT from environment: ${KDKROOT}"
+    fi
     info "Building XNU for macOS ${MACOS_VERSION}"
     if [ ! -d "$KDKROOT" ]; then
         KDK_URL=$(curl -s "https://raw.githubusercontent.com/dortania/KdkSupportPkg/gh-pages/manifest.json" | jq -r --arg KDK_NAME "$KDK_NAME" '.[] | select(.name==$KDK_NAME) | .url')
@@ -491,7 +496,10 @@ build_bootstrap_cmds() {
 
         sed -i '' 's|-o root -g wheel||g' "${WORK_DIR}/bootstrap_cmds/xcodescripts/install-mig.sh"
 
-        CLONED_BOOTSTRAP_VERSION=$(cd "${WORK_DIR}/bootstrap_cmds"; git describe --always 2>/dev/null)
+        CLONED_BOOTSTRAP_VERSION=$(
+            cd "${WORK_DIR}/bootstrap_cmds"
+            git describe --always 2>/dev/null || echo unknown
+        )
 
         cd "${SRCROOT}"
         env LD="$(xcrun -find clang)" LDPLUSPLUS="$(xcrun -find clang++)" \
@@ -656,6 +664,36 @@ print(count)' 2>/dev/null || true)
     KERNEL_PARALLELISM_OVERRIDE=1
 }
 
+# xnu locates ctfconvert/ctfmerge/ctfdump with `xcrun -find`, which only knows Xcode's toolchain,
+# and silently disables CTF generation (DO_CTFMERGE=0) when that fails. build_dtrace installs the
+# tools into the fakeroot, so hand xnu their paths explicitly; otherwise the kernel ships without
+# the __CTF type data DTrace and lldb rely on. Gap spotted via jonhermansen/darnix (commit 6d19d1f).
+ctf_tool_overrides() {
+    local tool
+    for tool in ctfconvert ctfmerge ctfdump; do
+        if [ ! -x "${FAKEROOT_DIR}/usr/local/bin/${tool}" ]; then
+            error "${tool} not found in ${FAKEROOT_DIR}/usr/local/bin (build_dtrace should have installed it)"
+            exit 1
+        fi
+    done
+    CTF_TOOL_OVERRIDES=(
+        "CTFCONVERT=${FAKEROOT_DIR}/usr/local/bin/ctfconvert"
+        "CTFMERGE=${FAKEROOT_DIR}/usr/local/bin/ctfmerge"
+        "CTFDUMP=${FAKEROOT_DIR}/usr/local/bin/ctfdump"
+    )
+}
+
+# newvers.pl stamps `date` and the object directory into the kernel version banner. Pin both to
+# the xnu source tag (commit date in UTC, tag name) so identical sources give identical kernels
+# and `uname -v` names the source drop. Either value can be overridden from the environment.
+kernel_version_env() {
+    local xnu_tag
+    xnu_tag=$(git -C "${WORK_DIR}/xnu" describe --tags --exact-match 2>/dev/null || git -C "${WORK_DIR}/xnu" describe --tags --always)
+    export KERNEL_BUILD_DATE="${KERNEL_BUILD_DATE:-$(TZ=UTC git -C "${WORK_DIR}/xnu" log -1 --format=%cd --date=format-local:'%a %b %e %T %Z %Y')}"
+    export KERNEL_BUILD_OBJROOT="${KERNEL_BUILD_OBJROOT:-${xnu_tag}}"
+    info "Kernel version banner: ${KERNEL_BUILD_DATE}; ${KERNEL_BUILD_OBJROOT}"
+}
+
 build_xnu() {
     if [ ! -f "${BUILD_DIR}/xnu.obj/kernel.${KERNEL_TYPE}" ]; then
         if [ "$JSONDB" -ne "0" ]; then
@@ -689,7 +727,9 @@ build_xnu() {
             OBJROOT="${BUILD_DIR}/xnu.obj"
             SYMROOT="${BUILD_DIR}/xnu.sym"
             cd "${SRCROOT}"
-            make install -j8 VERBOSE=YES SDKROOT=macosx TARGET_CONFIGS="$KERNEL_CONFIG $ARCH_CONFIG $MACHINE_CONFIG" CONCISE=0 LOGCOLORS=y BUILD_WERROR=0 BUILD_LTO=0 SRCROOT="${SRCROOT}" OBJROOT="${OBJROOT}" SYMROOT="${SYMROOT}" DSTROOT="${DSTROOT}" FAKEROOT_DIR="${FAKEROOT_DIR}" KDKROOT="${KDKROOT}" TIGHTBEAMC=${TIGHTBEAMC} RC_DARWIN_KERNEL_VERSION=${RC_DARWIN_KERNEL_VERSION} MEMORY_SIZE="${MEMORY_SIZE_OVERRIDE}" SYSCTL_HW_PHYSICALCPU="${PHYS_CPU_OVERRIDE}" SYSCTL_HW_LOGICALCPU="${LOGICAL_CPU_OVERRIDE}" KERNEL_BUILDS_IN_PARALLEL="${KERNEL_PARALLELISM_OVERRIDE:-1}"
+            ctf_tool_overrides
+            kernel_version_env
+            make install -j8 VERBOSE=YES "${CTF_TOOL_OVERRIDES[@]}" SDKROOT=macosx TARGET_CONFIGS="$KERNEL_CONFIG $ARCH_CONFIG $MACHINE_CONFIG" CONCISE=0 LOGCOLORS=y BUILD_WERROR=0 BUILD_LTO=0 SRCROOT="${SRCROOT}" OBJROOT="${OBJROOT}" SYMROOT="${SYMROOT}" DSTROOT="${DSTROOT}" FAKEROOT_DIR="${FAKEROOT_DIR}" KDKROOT="${KDKROOT}" TIGHTBEAMC=${TIGHTBEAMC} RC_DARWIN_KERNEL_VERSION=${RC_DARWIN_KERNEL_VERSION} MEMORY_SIZE="${MEMORY_SIZE_OVERRIDE}" SYSCTL_HW_PHYSICALCPU="${PHYS_CPU_OVERRIDE}" SYSCTL_HW_LOGICALCPU="${LOGICAL_CPU_OVERRIDE}" KERNEL_BUILDS_IN_PARALLEL="${KERNEL_PARALLELISM_OVERRIDE:-1}"
             cd "${WORK_DIR}"
         fi
     else
@@ -717,8 +757,10 @@ build_xnu_library() {
             lib_env+=("XNU_LibAllFiles=${XNU_LIB_ALL_FILES}")
         fi
         cd "${SRCROOT}"
+        ctf_tool_overrides
+        kernel_version_env
         env "${lib_env[@]}" \
-            make install -j8 VERBOSE=YES SDKROOT=macosx TARGET_CONFIGS="$KERNEL_CONFIG $ARCH_CONFIG $MACHINE_CONFIG" CONCISE=0 LOGCOLORS=y BUILD_WERROR=0 BUILD_LTO=0 SRCROOT="${SRCROOT}" OBJROOT="${OBJROOT}" SYMROOT="${SYMROOT}" DSTROOT="${DSTROOT}" FAKEROOT_DIR="${FAKEROOT_DIR}" KDKROOT="${KDKROOT}" TIGHTBEAMC=${TIGHTBEAMC} RC_DARWIN_KERNEL_VERSION=${RC_DARWIN_KERNEL_VERSION} MEMORY_SIZE="${MEMORY_SIZE_OVERRIDE}" SYSCTL_HW_PHYSICALCPU="${PHYS_CPU_OVERRIDE}" SYSCTL_HW_LOGICALCPU="${LOGICAL_CPU_OVERRIDE}" KERNEL_BUILDS_IN_PARALLEL="${KERNEL_PARALLELISM_OVERRIDE:-1}"
+            make install -j8 VERBOSE=YES "${CTF_TOOL_OVERRIDES[@]}" SDKROOT=macosx TARGET_CONFIGS="$KERNEL_CONFIG $ARCH_CONFIG $MACHINE_CONFIG" CONCISE=0 LOGCOLORS=y BUILD_WERROR=0 BUILD_LTO=0 SRCROOT="${SRCROOT}" OBJROOT="${OBJROOT}" SYMROOT="${SYMROOT}" DSTROOT="${DSTROOT}" FAKEROOT_DIR="${FAKEROOT_DIR}" KDKROOT="${KDKROOT}" TIGHTBEAMC=${TIGHTBEAMC} RC_DARWIN_KERNEL_VERSION=${RC_DARWIN_KERNEL_VERSION} MEMORY_SIZE="${MEMORY_SIZE_OVERRIDE}" SYSCTL_HW_PHYSICALCPU="${PHYS_CPU_OVERRIDE}" SYSCTL_HW_LOGICALCPU="${LOGICAL_CPU_OVERRIDE}" KERNEL_BUILDS_IN_PARALLEL="${KERNEL_PARALLELISM_OVERRIDE:-1}"
         cd "${WORK_DIR}"
         if [ -f "${lib_archive}" ]; then
             info "📦 Created ${lib_archive}"

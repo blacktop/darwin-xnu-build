@@ -114,6 +114,8 @@ KERNEL_CONFIG=RELEASE ARCH_CONFIG=ARM64 MACHINE_CONFIG=VMAPPLE ./build.sh --kc
 > - `T8103`
 > - `T6000`
 > - `VMAPPLE`
+>
+> Optional environment overrides: `DEVELOPER_DIR` (Xcode to use), `KDKROOT` (KDK to build against instead of the one matching `MACOS_VERSION`), `KERNEL_BUILD_DATE` and `KERNEL_BUILD_OBJROOT` (the version banner defaults to the xnu tag's commit date in UTC and the tag name, so identical sources produce identical kernels).
 
 ```bash
 <SNIP>
@@ -201,7 +203,10 @@ This toggles Apple's `RC_ProjectName=xnu_libraries` path and drops the archive p
 - `build/xnu-lib.obj/RELEASE_ARM64_VMAPPLE/*.libfilelist`
 - `build/xnu-lib.obj/RELEASE_ARM64_VMAPPLE/all-{alias,kpi}.exp`
 
-Every GitHub release also publishes a pre-packed `xnu-lib-<version>.tar.gz` bundle mirroring the layout above, so researchers without a local build host can download the archive and supporting lists directly.
+> [!WARNING]
+> By default the archive holds only the sources Apple tags `xnu-library` in `conf/files` (currently just `bsd/kern/qsort.c`) plus `version.o`, and the `.libfilelist`s are empty. The export lists and generated headers are real, but there is no kernel code to link against. Apple's own userspace unit-test harness (`xnu/tests/unit/`) builds the library with `XNU_LibAllFiles=1 XNU_LibFlavour=UNITTEST`; pass `XNU_LIB_ALL_FILES=1 XNU_LIB_FLAVOUR=UNITTEST` to get the same, which compiles every kernel source as an arm64e userspace object (no `-mkernel`) and leaves a multi-hundred-MB objdir. The `UNITTEST` flavour is the only one the sources know; any other value is an unused macro.
+
+Every GitHub release also publishes a pre-packed `xnu-lib-<version>.tar.gz` bundle mirroring the default layout above (export lists and generated headers, not a linkable kernel).
 
 ### Clean rebuild the kernel and kernel collection
 
@@ -281,6 +286,12 @@ artifacts/
 
 ## NOTES
 
+Kernels carry CTF type data in a `__CTF` section, generated at link time with the `ctfconvert`/`ctfmerge`/`ctfdump` tools that `build.sh` builds from Apple's dtrace sources. DTrace scripts that use kernel types (`args[0]->p_pid`, casts to kernel structs) and lldb's type-aware kernel macros depend on it. Verify with:
+
+```bash
+otool -l build/xnu.obj/DEVELOPMENT_ARM64_VMAPPLE/kernel.development.vmapple | grep -c __CTF
+```
+
 To see kernel logs
 
 ```bash
@@ -291,3 +302,4 @@ log show --debug --last boot --predicate 'process == "kernel"'
 
 - <https://github.com/pwn0rz/xnu-build>
 - <https://kernelshaman.blogspot.com/2021/02/building-xnu-for-macos-112-intel-apple.html>
+- <https://github.com/jonhermansen/darnix> (spotted that the CTF tools were never wired into the kernel build)
