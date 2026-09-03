@@ -141,10 +141,10 @@ time to compute UUID and codesign cache file: 1ms
   🎉 XNU Build Done!
 ```
 
-Check that the output contains all the KEXTs
+The kernel collection is written to `fakeroot/oss-xnu.macOS.<MACOS_VERSION>.kc.<machine_config>.<kernel_config>`. Check that it contains all the KEXTs
 
 ```bash
-❯ ipsw macho info build/oss-xnu.kc | head
+❯ ipsw macho info fakeroot/oss-xnu.macOS.26.5.kc.vmapple.development | head
 Magic         = 64-bit MachO
 Type          = FILESET
 CPU           = AARCH64, ARM64e
@@ -157,6 +157,37 @@ Flags         = None
 004: LC_SEGMENT_64 sz=0x00008000 off=0x00000000-0x00008000 addr=0xfffffe0007004000-0xfffffe000700c000 r--/r--   __TEXT
 <SNIP>
 ```
+
+### Boot the kernel collection in a VM
+
+`kmutil configure-boot` only runs from recoveryOS, and the guest's boot policy must allow custom boot objects (Permissive Security). Virtualization.framework guests need macOS 14.4 or newer to boot a custom kernel (see [#16](https://github.com/blacktop/darwin-xnu-build/issues/16)).
+
+1. Build the kernel collection for the VM:
+
+   ```bash
+   MACOS_VERSION='26.5' KERNEL_CONFIG=DEVELOPMENT ARCH_CONFIG=ARM64 MACHINE_CONFIG=VMAPPLE ./build.sh --kc
+   ```
+
+2. Put `fakeroot/oss-xnu.macOS.26.5.kc.vmapple.development` on the guest's data volume, e.g. in `~/Desktop/` (build inside the guest, or copy the file in).
+3. Shut the guest down and start it in recoveryOS: `tart run --recovery <vm>` for Tart; UTM and other Virtualization.framework front-ends expose the same `startUpFromMacOSRecovery` option.
+4. In recoveryOS open Utilities > Terminal and lower the security policy. Answer `y` when asked to drop to "permissive":
+
+   ```bash
+   csrutil disable
+   ```
+
+   If `kmutil configure-boot` later refuses because of the policy, set Reduced Security in Startup Security Utility (Utilities menu) first and run it again.
+
+5. Point the boot policy at the KC. recoveryOS mounts the guest's system volume under `/Volumes/Macintosh HD`:
+
+   ```bash
+   kmutil configure-boot -v "/Volumes/Macintosh HD" -c "/Volumes/Macintosh HD/Users/<you>/Desktop/oss-xnu.macOS.26.5.kc.vmapple.development"
+   reboot
+   ```
+
+6. After the reboot, `uname -v` reports the `DEVELOPMENT_ARM64_VMAPPLE` config and your build path instead of Apple's release kernel string.
+
+To return to the stock kernel, boot recoveryOS again and raise the policy back to Full Security (`csrutil enable`, accepting the prompt, or Startup Security Utility). Full Security does not permit custom boot objects, so Apple's kernel collection boots again.
 
 ### Build the XNU library (macOS 26.0+)
 

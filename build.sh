@@ -412,6 +412,7 @@ get_xnu() {
     fi
 }
 
+# shellcheck disable=SC2016 # the $(...) in these sed expressions are make/xcconfig variables that must stay literal
 patches() {
     running "🩹 Patching xnu files"
     # xnu headers patch
@@ -420,7 +421,10 @@ patches() {
     sed -i '' 's|^#include.*BSD.xcconfig.*||g' "${WORK_DIR}/xnu/libsyscall/Libsyscall.xcconfig"
     # xnu build patch
     sed -i '' 's|^LDFLAGS_KERNEL_SDK	= -L$(SDKROOT).*|LDFLAGS_KERNEL_SDK	= -L$(FAKEROOT_DIR)/usr/local/lib/kernel -lfirehose_kernel|g' "${WORK_DIR}/xnu/makedefs/MakeInc.def"
-    sed -i '' 's|^INCFLAGS_SDK	= -I$(SDKROOT)|INCFLAGS_SDK	= -I$(FAKEROOT_DIR)|g' "${WORK_DIR}/xnu/makedefs/MakeInc.def"
+    # Apple has changed this line's whitespace (tab vs spaces) and path (usr/local/include/ vs
+    # usr/local/include/kernel) across releases; match every known form so xnu always sees the
+    # os/firehose_buffer_private.h that libdispatch installs into the fakeroot.
+    sed -i '' 's|^\(INCFLAGS_SDK[[:space:]]*=\) -I$(SDKROOT)/usr/local/include/\(kernel\)\{0,1\}|\1 -I$(FAKEROOT_DIR)/usr/local/include/kernel|' "${WORK_DIR}/xnu/makedefs/MakeInc.def"
     # specify location of mig (bootstrap_cmds)
     sed -i '' 's|export MIG := $(shell $(XCRUN) -sdk $(SDKROOT) -find mig)|export MIG := $(shell find $(FAKEROOT_DIR) -name "mig")|g' "${WORK_DIR}/xnu/makedefs/MakeInc.cmd"
     sed -i '' 's|export MIGCOM := $(shell $(XCRUN) -sdk $(SDKROOT) -find migcom)|export MIGCOM := $(shell find $(FAKEROOT_DIR) -name "migcom")|g' "${WORK_DIR}/xnu/makedefs/MakeInc.cmd"
@@ -452,13 +456,15 @@ patches() {
         if compgen -G "${PATCH_DIR}"'/*.sh' > /dev/null; then
             for SCRIPT in "${PATCH_DIR}"/*.sh; do
                 running "Running script: ${SCRIPT}"
-                bash "${SCRIPT}"
+                KDKROOT="${KDKROOT}" bash "${SCRIPT}"
             done
         fi
         for PATCH in "${PATCH_DIR}"/*.patch; do
-            if git apply --check "$PATCH" 2> /dev/null; then
+            if APPLY_CHECK=$(git apply --check "$PATCH" 2>&1); then
                 running "Applying patch: ${PATCH}"
                 git apply "$PATCH"
+            else
+                warning "Skipping patch ${PATCH} (already upstream, previously applied, or malformed): ${APPLY_CHECK}"
             fi
         done
         cd "${WORK_DIR}"
@@ -582,6 +588,7 @@ build_libplatform() {
     fi
 }
 
+# shellcheck disable=SC2016 # the $(...) in these sed expressions are make/xcconfig variables that must stay literal
 build_libdispatch() {
     if [ ! -f "${FAKEROOT_DIR}/usr/local/lib/kernel/libfirehose_kernel.a" ]; then
         running "📦 Building libdispatch"

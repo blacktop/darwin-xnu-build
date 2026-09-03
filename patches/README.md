@@ -5,16 +5,17 @@ This repository already ships a number of pre-made patches that soften the rough
 ## macOS 26.0 Toolkit (`patches/26.0/`)
 
 ### Minimal Required Pieces
-- `00_setup_coreentitlements.sh`: copies KDK CoreEntitlements V2 headers, creates the missing `Kernel.h`, and stubs `os/firehose_buffer_private.h`.
+- `00_setup_coreentitlements.sh`: copies the CoreEntitlements V2 headers from the KDK selected by `build.sh` and creates the missing `Kernel.h`. It also deletes the obsolete `os/firehose_buffer_private.h` stub that earlier revisions generated (see the firehose notes below).
 - `add_iboot_header.patch`: provides the stubbed `EXTERNAL_HEADERS/iBoot/boot_args_abi.h`.
 - `link_kdk.patch`: **CRITICAL** – force-loads the KDK archive (`libVMAPPLE.os.RELEASE.a`) so the kernel links all private ARM64 monitor/MMU routines.
 - `remove_applefeatures_include.patch`: drops the unavailable `<AppleFeatures.h>` include from `vm_resident.c`.
-- `remove_tightbeam.patch`: clears `config/libTightbeam.exports` so the linker stops looking for private `_tb_*` entry points.
+- `dsymutil_no_process_substitution.patch`: runs `dsymutil` directly instead of through a bash process substitution, which failed with `EPERM` on `/dev/fd`.
+- `simplify_san_lipo.patch`: replaces the `lipo -detailed_info | awk` pipeline in the sanitizer symbolset rule with a plain `lipo -create`, avoiding `_SC_ARG_MAX` failures.
 
 ### Optional Quality-of-Life Patches
 - `disable_bti_vmapple.patch`: undefines `BTI_ENFORCED` just for VMAPPLE so BTI checks don't trip when booting the kernel inside Virtualization.framework guests.
 
-> Historical note: `disable_dtrace_vm_apple.patch` was used on older drops to sidestep assembler issues in SDT macros. The macOS 26.0 toolchain now builds without it, so the patch has been retired.
+> Historical note: `disable_dtrace_vm_apple.patch` was used on older drops to sidestep assembler issues in SDT macros. The macOS 26.0 toolchain now builds without it, so the patch has been retired. `remove_tightbeam.patch`, `iokit.patch` and `skywalk.patch` were likewise dropped from the 26.0 toolkit in `2b72aa9` once the 26.x sources stopped needing them.
 
 ## Sonoma / Sequoia Backports (`patches/15.0/` and `patches/14.4/`)
 - `entitlements.patch`: routes legacy `CodeSignature/Entitlements.h` uses to the CoreEntitlements header and injects the missing web browser entitlement constants.
@@ -46,3 +47,16 @@ The macOS 26.0 (Tahoe beta) port required porting several critical patches from 
 4. **Skywalk & IOKit**: Both patches from 15.0 apply cleanly to 26.0 sources.
 
 Having this catalog lets us spot when a new breakage matches an old fix. For future macOS releases, the immediate candidates to check are the KDK force-load rule, the Tightbeam export wipe, the skywalk FPD helpers, and any new stub conflicts with KDK archives.
+
+## 26.5 Update Notes
+
+The macOS 26.5 source drop (`xnu-12377.121.6`) keeps using the 26.0 fallback toolkit. Two older workarounds are now present upstream: `vm_resident.c` no longer includes `<AppleFeatures.h>`, and `MakeInc.def` already force-loads the matching KDK archive for non-`NONE` machine configs. The fallback patch loop will therefore skip those obsolete diffs while still applying the pieces that remain relevant.
+
+## Silent patch skips and the firehose header (26.x)
+
+Two build-time problems kept 26.x VMAPPLE kernels from booting even though `build.sh` reported success:
+
+- `disable_bti_vmapple.patch` and `simplify_san_lipo.patch` shipped with a bare `@@` hunk header. `git apply --check` rejects that with "patch with only garbage", and the patch loop in `build.sh` discarded stderr and moved on, so neither patch was ever applied. Both hunks now carry real line counts, and the loop prints a warning for every patch it skips. A hunk header must look like `@@ -<start>,<count> +<start>,<count> @@`; `git apply` tolerates a stale start line (it searches for the context) but not a malformed header.
+- `00_setup_coreentitlements.sh` used to generate a hand-written `os/firehose_buffer_private.h` that defined `FIREHOSE_BUFFER_KERNEL_CHUNK_COUNT` as `1`, the default chunk count as `64` and the default I/O page count as `0`. libdispatch defines the chunk count as the boot-arg driven variable `__firehose_buffer_kernel_chunk_count` (default 16) with 8 I/O pages, and `libkern/os/log.c` copies the boot log chunk into slot `CHUNK_COUNT - 1`, so the stub made xnu write the boot chunk over the firehose buffer header while `libfirehose_kernel.a` expected it in the last slot. The stub only existed because the `INCFLAGS_SDK` rewrite in `build.sh` no longer matched Apple's `MakeInc.def` (26.0 and 26.1 dropped the `kernel` path component, 26.2 and later replaced the tab with spaces), so the real header that libdispatch installs into `fakeroot/usr/local/include/kernel` was never on the include path. The rewrite now matches every known form, the stub is gone, and the script deletes any copy left behind by older runs.
+
+`build.sh` now also passes `KDKROOT` to the patch scripts explicitly. Before, the variable was never exported, so the setup script always fell through to its glob fallback and copied the CoreEntitlements headers from whichever `KDK_26.*` sorted last on disk rather than the KDK being built against.

@@ -1,11 +1,14 @@
 #!/bin/bash
 
+set -euo pipefail
+
 # Setup CoreEntitlements V2 headers from KDK
 # This script creates the necessary directory structure and copies KDK headers
 
 EXTERNAL_HEADERS="./EXTERNAL_HEADERS"
 # Prefer the KDKROOT provided by build.sh, falling back to known 26.x KDKs.
-KDKROOT_CLEAN="${KDKROOT%/}"
+KDKROOT_CLEAN="${KDKROOT:-}"
+KDKROOT_CLEAN="${KDKROOT_CLEAN%/}"
 KDK_CE_PATH=""
 
 # Try KDKROOT from environment first
@@ -50,7 +53,7 @@ fi
 
 # Create minimal Kernel.h stub (not in KDK, needed by amfi.h)
 echo "  Creating Kernel.h stub..."
-cat > "${EXTERNAL_HEADERS}/CoreEntitlements/V2/Kernel.h" <<'EOF'
+cat >"${EXTERNAL_HEADERS}/CoreEntitlements/V2/Kernel.h" <<'EOF'
 #ifndef CORE_ENTITLEMENTS_V2_KERNEL_H
 #define CORE_ENTITLEMENTS_V2_KERNEL_H
 
@@ -116,52 +119,13 @@ typedef struct coreentitlements_kernel_api CEKernelAPI_t;
 #endif /* CORE_ENTITLEMENTS_V2_KERNEL_H */
 EOF
 
-# Create os directory for firehose header if needed
-mkdir -p "${EXTERNAL_HEADERS}/os"
-
-# Create firehose_buffer_private.h stub
-echo "  Creating firehose_buffer_private.h stub..."
-cat > "${EXTERNAL_HEADERS}/os/firehose_buffer_private.h" <<'EOF'
-#ifndef _OS_FIREHOSE_BUFFER_PRIVATE_H_
-#define _OS_FIREHOSE_BUFFER_PRIVATE_H_
-
-#include <stdbool.h>
-#include <stdint.h>
-#include <mach/vm_types.h>
-#include <firehose/firehose_types_private.h>
-
-struct firehose_buffer_range_s {
-    uint16_t fbr_offset;
-    uint16_t fbr_length;
-};
-
-#define FIREHOSE_BUFFER_KERNEL_CHUNK_COUNT 1
-#define FIREHOSE_BUFFER_KERNEL_DEFAULT_CHUNK_COUNT 64
-#define FIREHOSE_BUFFER_KERNEL_DEFAULT_IO_PAGES 0
-
-__BEGIN_DECLS
-
-firehose_tracepoint_t __firehose_buffer_tracepoint_reserve(uint64_t timestamp,
-    firehose_stream_t stream,
-    uint16_t pub_size,
-    uint16_t priv_size,
-    uint8_t **priv_data_out);
-
-void __firehose_buffer_tracepoint_flush(firehose_tracepoint_t ft,
-    firehose_tracepoint_id_u ftid);
-
-void __firehose_buffer_push_to_logd(firehose_buffer_t fb, bool for_io);
-void __firehose_allocate(vm_offset_t *addr, vm_size_t size);
-void __firehose_critical_region_enter(void);
-void __firehose_critical_region_leave(void);
-
-bool __firehose_kernel_configuration_valid(uint32_t chunk_count, uint32_t io_pages);
-firehose_buffer_t __firehose_buffer_create(size_t *size);
-bool __firehose_merge_updates(firehose_push_reply_t reply);
-
-__END_DECLS
-
-#endif /* _OS_FIREHOSE_BUFFER_PRIVATE_H */
-EOF
+# Older revisions of this script wrote a hand-made os/firehose_buffer_private.h here. The real
+# header is installed by libdispatch into ${FAKEROOT_DIR}/usr/local/include/kernel, and a stale
+# stub under EXTERNAL_HEADERS would shadow it, so remove any leftover copy.
+if [ -f "${EXTERNAL_HEADERS}/os/firehose_buffer_private.h" ]; then
+    echo "  Removing obsolete firehose_buffer_private.h stub..."
+    rm -f "${EXTERNAL_HEADERS}/os/firehose_buffer_private.h"
+    rmdir "${EXTERNAL_HEADERS}/os" 2>/dev/null || true
+fi
 
 echo "CoreEntitlements V2 setup complete."
