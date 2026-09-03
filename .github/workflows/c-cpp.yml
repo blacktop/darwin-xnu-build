@@ -30,6 +30,9 @@ jobs:
       - name: Deps
         run: |
           # brew update
+          # Homebrew 6 refuses formulae from non-official taps unless the tap is trusted
+          brew tap blacktop/tap
+          brew trust blacktop/tap
           brew install bash blacktop/tap/ipsw
           # cmake brew fix TODO remove when fixed
           brew uninstall cmake || true

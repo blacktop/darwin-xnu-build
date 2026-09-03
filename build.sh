@@ -194,6 +194,11 @@ install_deps() {
 install_ipsw() {
     if [ ! -x "$(command -v ipsw)" ]; then
         running "Installing ipsw..."
+        brew tap blacktop/tap
+        # Homebrew 6 refuses formulae from non-official taps unless the tap is trusted
+        if brew trust --help > /dev/null 2>&1; then
+            brew trust blacktop/tap
+        fi
         brew install blacktop/tap/ipsw
     fi
 }
