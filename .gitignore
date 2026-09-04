@@ -67,3 +67,6 @@ xnu-codeql
 xnu-codeql.zip
 xnu-queries
 codeql_queries
+
+# harness generated
+harness/zero_stubs.s

@@ -35,89 +35,35 @@ echo "Setting up CoreEntitlements V2 headers..."
 # Create V2 directory if it doesn't exist
 mkdir -p "${EXTERNAL_HEADERS}/CoreEntitlements/V2"
 
-# Copy Context.h and API.h from KDK (these exist in KDK)
-if [ -f "${KDK_CE_PATH}/V2/Context.h" ]; then
-    echo "  Copying Context.h from KDK..."
-    cp "${KDK_CE_PATH}/V2/Context.h" "${EXTERNAL_HEADERS}/CoreEntitlements/V2/"
+# Copy every V2 header (API.h pulls in Closure.h, Acceleration.h and StackProtector.h).
+echo "  Copying V2 headers from ${KDK_CE_PATH}..."
+cp "${KDK_CE_PATH}/V2/"*.h "${EXTERNAL_HEADERS}/CoreEntitlements/V2/"
+
+# Kernel.h (the CEKernelAPI_t function table AMFI hands to xnu) is not under PrivateHeaders; KDKs from
+# 26.4 on ship it in System/Library/KernelSupport. Earlier revisions of this script wrote a made-up
+# struct here, which compiled for VMAPPLE only because no code path used the table, and broke every
+# CODE_SIGNING_MONITOR config. Use Apple's header, borrowing it from another installed 26.x KDK when
+# the target KDK predates it (the layout is identical across 26.4 through 26.6.2).
+KERNEL_H_REL="System/Library/KernelSupport/CoreEntitlements/V2/Kernel.h"
+KERNEL_H=""
+if [ -n "${KDKROOT_CLEAN}" ] && [ -f "${KDKROOT_CLEAN}/${KERNEL_H_REL}" ]; then
+    KERNEL_H="${KDKROOT_CLEAN}/${KERNEL_H_REL}"
+else
+    for KDK in /Library/Developer/KDKs/KDK_26.*.kdk; do
+        if [ -f "${KDK}/${KERNEL_H_REL}" ]; then
+            KERNEL_H="${KDK}/${KERNEL_H_REL}"
+        fi
+    done
+    if [ -n "${KERNEL_H}" ]; then
+        echo "  WARNING: ${KDKROOT_CLEAN:-the selected KDK} has no ${KERNEL_H_REL}; borrowing ${KERNEL_H}"
+    fi
 fi
-
-if [ -f "${KDK_CE_PATH}/V2/API.h" ]; then
-    echo "  Copying API.h from KDK..."
-    cp "${KDK_CE_PATH}/V2/API.h" "${EXTERNAL_HEADERS}/CoreEntitlements/V2/"
+if [ -z "${KERNEL_H}" ]; then
+    echo "ERROR: no installed 26.x KDK provides ${KERNEL_H_REL}; install KDK 26.4 or newer"
+    exit 1
 fi
-
-if [ -f "${KDK_CE_PATH}/V2/Return.h" ]; then
-    echo "  Copying Return.h from KDK..."
-    cp "${KDK_CE_PATH}/V2/Return.h" "${EXTERNAL_HEADERS}/CoreEntitlements/V2/"
-fi
-
-# Create minimal Kernel.h stub (not in KDK, needed by amfi.h)
-echo "  Creating Kernel.h stub..."
-cat >"${EXTERNAL_HEADERS}/CoreEntitlements/V2/Kernel.h" <<'EOF'
-#ifndef CORE_ENTITLEMENTS_V2_KERNEL_H
-#define CORE_ENTITLEMENTS_V2_KERNEL_H
-
-#include <stdbool.h>
-#include <stdint.h>
-#include <CoreEntitlements/CoreEntitlements.h>
-#include <CoreEntitlements/der_vm.h>
-
-struct CEQueryContext;
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef struct coreentitlements_kernel_api {
-    uint32_t version;
-    CEError_t kNoError;
-    CEError_t kMalformedEntitlements;
-    CEError_t kNotEligibleForAcceleration;
-
-    const char *(*GetErrorString)(CEError_t error);
-
-    CEError_t (*ContextQuery)(CEQueryContext_t ctx,
-        const CEQueryOperation_t *__counted_by(queryLength) query,
-        size_t queryLength);
-
-    CEError_t (*Validate)(const CERuntime_t rt,
-        CEValidationResult *result,
-        const uint8_t *__ended_by(blob_end) blob,
-        const uint8_t *blob_end);
-
-    CEError_t (*AcquireUnmanagedContext)(const CERuntime_t rt,
-        CEValidationResult validationResult,
-        struct CEQueryContext *ctx);
-
-    der_vm_context_t (*der_vm_context_create)(const CERuntime_t rt,
-        ccder_tag dictionary_tag,
-        bool sorted_keys,
-        const uint8_t *__ended_by(der_end) der,
-        const uint8_t *der_end);
-
-    der_vm_context_t (*der_vm_execute)(der_vm_context_t context,
-        CEQueryOperation_t op);
-
-    der_vm_context_t (*der_vm_execute_seq)(der_vm_context_t context,
-        const CEQueryOperation_t *__counted_by(queryLength) query,
-        size_t queryLength);
-
-    bool (*der_vm_context_is_valid)(der_vm_context_t context);
-    bool (*der_vm_bool_from_context)(der_vm_context_t context);
-
-    CEError_t (*IndexSizeForContext)(CEQueryContext_t ctx, size_t *size);
-    CEError_t (*BuildIndexForContext)(CEQueryContext_t ctx);
-    bool (*ContextIsAccelerated)(CEQueryContext_t ctx);
-} coreentitlements_kernel_api;
-
-typedef struct coreentitlements_kernel_api CEKernelAPI_t;
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* CORE_ENTITLEMENTS_V2_KERNEL_H */
-EOF
+echo "  Copying Kernel.h from ${KERNEL_H}..."
+cp "${KERNEL_H}" "${EXTERNAL_HEADERS}/CoreEntitlements/V2/Kernel.h"
 
 # Older revisions of this script wrote a hand-made os/firehose_buffer_private.h here. The real
 # header is installed by libdispatch into ${FAKEROOT_DIR}/usr/local/include/kernel, and a stale

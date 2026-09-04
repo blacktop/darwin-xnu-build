@@ -1,0 +1,7 @@
+ml_default_jop_pid
+machine_thread_create
+pmap_free_pages
+pmap_virtual_region
+pmap_is_noencrypt
+pmap_zero_page_with_options
+rorgn_contains
