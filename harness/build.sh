@@ -92,10 +92,13 @@ if cmp -s "${UNIT_DIR}/mocks/mock_mem.c" "${OBJ}/mocks-src/mock_mem.c"; then
     die "mock_mem.c substitution did not apply; Apple changed the pool allocation, update this script"
 fi
 
+# Apple's unexport list plus the harness's own additions; see xnu_lib.unexport.extra for why.
+cat "${UNIT_DIR}/tools/xnu_lib.unexport" "${HARNESS_DIR}/xnu_lib.unexport.extra" >"${OBJ}/xnu_lib.unexport"
+
 info "prelinking ${LIB_BASE}.a"
 "${CC}" "${OSFMK_CFLAGS[@]}" -c -x c /dev/null -o "${OBJ}/arch_def.o"
 "${LD}" -r "${OBJ}/arch_def.o" -all_load "${XNU_LIB}" -o "${OBJ}/${LIB_BASE}.prelinked.a" \
-    -unexported_symbols_list "${UNIT_DIR}/tools/xnu_lib.unexport" -alias_list "${OBJD}/all-alias.exp"
+    -unexported_symbols_list "${OBJ}/xnu_lib.unexport" -alias_list "${OBJD}/all-alias.exp"
 
 # KDK routines the bootstrap calls that have no meaning in a userspace process. Each is listed in
 # kdk_zero_stubs.txt and becomes a function returning 0, instead of the trap that func_unimpl.inc
@@ -165,8 +168,16 @@ info "linking smoke"
 # Apple's own tests, compiled unmodified against harness/include/darwintest.h. Each is one compile
 # plus one link against the two dylibs; the expensive library build is not repeated.
 info "linking tests"
+# Apple's tests, compiled unmodified. notification_policy.c and voucher_restrictions.c are
+# deliberately absent: the first asserts behavior that only holds when CONFIG_ROSETTA is defined,
+# the second reaches an SMR path that is unsupported in user mode. Both are explained under
+# "Test status" in README.md; add them here to reproduce.
 TESTS=(
     "${UNIT_DIR}/ipc/mach_port_construct.c"
+    "${UNIT_DIR}/ipc/voucher_user_data.c"
+    "${UNIT_DIR}/ipc/tss_policy.c"
+    "${UNIT_DIR}/ipc/copyout_immovable_send_right.c"
+    "${UNIT_DIR}/ipc/xpc_connection_port_pair.c"
 )
 for test_src in "${TESTS[@]}"; do
     test_name=$(basename "${test_src}" .c)
@@ -175,6 +186,22 @@ for test_src in "${TESTS[@]}"; do
         "${XNU_DYLIB}" "${MOCKS_DYLIB}" -Wl,-force_load,"${OBJ}/libside.a" \
         -rpath @executable_path -o "${SYM}/${test_name}"
     info "  ${SYM}/${test_name}"
+done
+
+# Fuzz targets: same compile-and-link shape as a test, but with the replay driver instead of the
+# T_DECL runner. -fsanitize=fuzzer-no-link instruments for coverage; see harness/README.md for what
+# is still missing before a coverage-guided run is possible.
+info "linking fuzz targets"
+FUZZERS=(
+    "${HARNESS_DIR}/fuzz_mach_port.c"
+)
+for fuzz_src in "${FUZZERS[@]}"; do
+    fuzz_name=$(basename "${fuzz_src}" .c)
+    "${CC}" "${OSFMK_CFLAGS[@]}" "${COMMON_CFLAGS[@]}" -DUT_MODULE=osfmk \
+        "${fuzz_src}" "${HARNESS_DIR}/fuzz_runner.c" \
+        "${XNU_DYLIB}" "${MOCKS_DYLIB}" -Wl,-force_load,"${OBJ}/libside.a" \
+        -rpath @executable_path -o "${SYM}/${fuzz_name}"
+    info "  ${SYM}/${fuzz_name}"
 done
 
 info "done: run ${SYM}/smoke"

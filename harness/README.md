@@ -56,8 +56,12 @@ Seven things were needed beyond Apple's own files, all in `attached.c`, `plan.c`
    6-bit shift from a 16 KiB base, and `mock_alloc.c` asserts packability, but `mock_mem.c` takes its
    pools from `calloc`, which macOS serves around 500 GB for large sizes. `harness_low_alloc` cuts
    them from one fixed reservation below the ~137 GB limit.
-5. **`mmap` resolution.** That reservation must call libc's `mmap` through `dlsym(RTLD_NEXT)`: a
-   plain call from inside the kernel dylib binds to XNU's own `mmap` syscall and crashes.
+5. **libc symbols XNU also defines.** A plain `mmap` call from inside the kernel dylib binds to
+   XNU's own `mmap` syscall and crashes, so `harness_low_alloc` resolves libc's through
+   `dlsym(RTLD_NEXT)`. The same trap catches test executables: the dylib exported `_read`, so a
+   `read()` in a runner landed in the kernel's `read()`. Apple's `xnu_lib.unexport` hides `_open` and
+   `_write` for this reason; `xnu_lib.unexport.extra` adds the ones the harness needs. Expect to
+   extend it when a new runner calls something new.
 6. **Skipping `sop_page_pool_init`.** `osfmk/arm64/sop.c` registers it at
    `STARTUP(ZALLOC, STARTUP_RANK_LAST)`; it grabs pages with `vm_page_grab_options()` and asserts a
    non-zero physical address inside `[vm_first_phys, vm_last_phys)`, which a userspace process cannot
@@ -99,15 +103,71 @@ The library build is the slow step and only has to be repeated when instrumentat
 | `kdk_zero_stubs.txt` | the KDK routines stubbed to return 0; `build.sh` generates `zero_stubs.s` | — |
 | `include/darwintest.h` | the darwintest macros Apple's tests use, so they compile unmodified | `libdarwintest.a` + its headers |
 | `dt_runner.c` | `main()` that runs every registered `T_DECL`; aborts on the first failure | libdarwintest's runner |
+| `fuzz_mach_port.c` | fuzz target over the Mach port right lifecycle; entry point is `LLVMFuzzerTestOneInput` | `tests/unit/fuzzing/` (not published) |
+| `fuzz_runner.c` | `main()` that replays input files through the target, since there is no arm64e libFuzzer | libFuzzer's driver |
+| `xnu_lib.unexport.extra` | extra libc symbols to hide from the dylib's exports | appended to Apple's `xnu_lib.unexport` |
 | `include/dyld-interposing.h` | verbatim copy of the public dyld header (APSL 2.0), absent from the SDK | `$(SDKROOT)/usr/local/include/mach-o/dyld-interposing.h` |
 
 Add a test by appending its path to `TESTS` in `build.sh`; each is one compile and one link against
 the two dylibs, so the expensive library build is not repeated.
 
-Next milestone: a fuzz target over the Mach port surface these tests already reach — a
-`FuzzedDataProvider`-style loop over `mach_port_construct` / `mach_port_mod_refs` /
-`mach_port_request_notification` / `mach_port_destruct` on `current_space()`, driven at first by a
-plain `main(argc, argv)` reading a file, since there is no arm64e libFuzzer runtime on this host.
+### Test status
+
+| Test | Cases | Result |
+|---|---|---|
+| `ipc/mach_port_construct.c` | 8 | pass |
+| `ipc/copyout_immovable_send_right.c` | 8 | pass |
+| `ipc/tss_policy.c` | 5 | pass |
+| `ipc/voucher_user_data.c` | 1 | pass |
+| `ipc/xpc_connection_port_pair.c` | 1 | pass |
+| `ipc/notification_policy.c` | 1 | fails on a build-config difference, see below |
+| `ipc/voucher_restrictions.c` | 6 | crashes in SMR, see below |
+
+**`notification_policy.c`** is not a harness fault, and not a kernel bug. Its
+`ipc_should_apply_policy_example` case asserts that a `TRANSLATED` policy always returns false, but
+`IPC_SPACE_POLICY_TRANSLATED` is `0x0040` only `#if CONFIG_ROSETTA` and `0x0000` otherwise
+(`osfmk/ipc/ipc_types.h`). Neither this library build nor the VMAPPLE kernel build defines
+`CONFIG_ROSETTA`, so the constant is zero, `current_policy & TRANSLATED` is false, and the function
+falls through to `current_policy & requested_level`, which is true for `DEFAULT`. The test's own
+preceding assertion — that the mocked and real implementations agree — passes, which is what shows
+the mock machinery is working and the disagreement is with the test's truth table. The same test
+would also need `XNU_TARGET_OS_OSX` for its `SIMULATED` and `OPTED_OUT` expectations. Running it
+meaningfully means building the library for a config where those constants are non-zero.
+
+**`voucher_restrictions.c`** crashes in `zfree_smr` (`osfmk/kern/zalloc.c`). Apple mocks
+`zone_enable_smr` to a no-op, and `fake_kinit.c` notes that SMR is unsupported in user mode (it skips
+`kauth_cred_init` for that reason), so a zone reaches the SMR free path without SMR state. How
+Apple's internal build avoids this is not visible from the public drop, so this is recorded as an
+open question rather than explained away.
+
+## Fuzzing
+
+`fuzz_mach_port.c` drives `mach_port_construct` / `mach_port_mod_refs` /
+`mach_port_request_notification` / `mach_port_destruct` against `current_space()`. The input is read
+as a program — an opcode plus operands per step — so a mutation reorders or reshapes a sequence of
+port operations. That matters because the interesting bugs here (refcount imbalance,
+use-after-destruct, guard mismatches) only appear across operations, not in a single call.
+
+```fish
+build/harness/DEVELOPMENT_ARM64_T6020/sym/fuzz_mach_port            # built-in seeds
+build/harness/DEVELOPMENT_ARM64_T6020/sym/fuzz_mach_port corpus/*   # replay a corpus
+```
+
+Oracles are XNU's own panics and asserts (the mocks turn a panic into an abort) plus the invariant
+checks in the target. A `kern_return_t` error is never a finding on its own: rejecting bad input is
+the kernel doing its job. A 400-input random soak runs clean, and inverting the post-construct
+oracle makes it abort on a genuinely constructed port, which is how the target is checked for
+exercising real kernel code rather than passing vacuously.
+
+The entry point is `LLVMFuzzerTestOneInput`, so a libFuzzer build needs no change to the target. What
+is missing is the runtime: Apple clang instruments with `-fsanitize=fuzzer-no-link` but ships no
+`libclang_rt.fuzzer_osx.a`, and Homebrew LLVM's copy has no arm64e slice. Either build compiler-rt's
+`lib/fuzzer` for arm64e and wrap it in a dylib the way Apple's Makefile does, or drive
+`-fsanitize-coverage=trace-pc-guard` from an external fuzzer; `mocks/san_attached.c` already stubs
+the coverage callbacks.
+
+Next: more of the surface Apple's tests already reach — vouchers and IPC policy — then buffer-backed
+`copyin`/`copyout`, which is what unlocks the parser-shaped targets.
 
 The mocks, `tools/quote_defines.py`, `tools/xnu_lib.unexport`, and `all-alias.exp` are used in place
 from the xnu checkout and the library objdir, so they always match the source drop being built.
