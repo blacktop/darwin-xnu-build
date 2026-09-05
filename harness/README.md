@@ -121,9 +121,10 @@ the two dylibs, so the expensive library build is not repeated.
 | `ipc/copyout_immovable_send_right.c` | 8 | pass |
 | `ipc/tss_policy.c` | 5 | pass |
 | `ipc/voucher_user_data.c` | 1 | pass |
+| `ipc/voucher_restrictions.c` | 6 | pass |
 | `ipc/xpc_connection_port_pair.c` | 1 | pass |
+| `copyio_test.c` | 1 | pass |
 | `ipc/notification_policy.c` | 1 | fails on a build-config difference, see below |
-| `ipc/voucher_restrictions.c` | 6 | crashes in SMR, see below |
 
 **`notification_policy.c`** is not a harness fault, and not a kernel bug. Its
 `ipc_should_apply_policy_example` case asserts that a `TRANSLATED` policy always returns false, but
@@ -136,11 +137,12 @@ the mock machinery is working and the disagreement is with the test's truth tabl
 would also need `XNU_TARGET_OS_OSX` for its `SIMULATED` and `OPTED_OUT` expectations. Running it
 meaningfully means building the library for a config where those constants are non-zero.
 
-**`voucher_restrictions.c`** crashes in `zfree_smr` (`osfmk/kern/zalloc.c`). Apple mocks
-`zone_enable_smr` to a no-op, and `fake_kinit.c` notes that SMR is unsupported in user mode (it skips
-`kauth_cred_init` for that reason), so a zone reaches the SMR free path without SMR state. How
-Apple's internal build avoids this is not visible from the public drop, so this is recorded as an
-open question rather than explained away.
+**Voucher SMR in this serial harness.** Apple's mocks leave SMR unsupported in user mode. Voucher
+lookups and releases are synchronous here, so the harness retires a voucher immediately after its
+SMR hash removal and reuses checked low-address storage compatible with the hash-link encoding.
+Guided builds poison freed and not-yet-allocated voucher slots for ASan coverage.
+This closes Apple's voucher-policy tests and guided voucher teardown, but does not model concurrent
+SMR readers.
 
 ## Fuzzing
 
@@ -150,9 +152,21 @@ as a program — an opcode plus operands per step — so a mutation reorders or 
 port operations. That matters because the interesting bugs here (refcount imbalance,
 use-after-destruct, guard mismatches) only appear across operations, not in a single call.
 
+`fuzz_voucher.c` sends byte-built `MACH_VOUCHER_ATTR_KEY_USER_DATA` recipes through
+`host_create_mach_voucher_trap`, varies the space's enhanced-security policy, and extracts stored
+data back through `mach_voucher_extract_attr_recipe_trap`. Successful storage must round-trip
+exactly and all returned rights must deallocate.
+
+`fuzz_ipc_policy.c` creates a strict service destination from a byte-backed
+`mach_service_port_info`, constructs canonical reply ports, varies the current and requested IPC
+policies, and calls `ipc_validate_local_port`. Invalid logical user ranges must produce
+`KERN_MEMORY_ERROR`; valid ranges and canonical construction must succeed.
+
 ```fish
 build/harness/DEVELOPMENT_ARM64_T6020/sym/fuzz_mach_port            # built-in seeds
 build/harness/DEVELOPMENT_ARM64_T6020/sym/fuzz_mach_port corpus/*   # replay a corpus
+build/harness/DEVELOPMENT_ARM64_T6020/sym/fuzz_voucher
+build/harness/DEVELOPMENT_ARM64_T6020/sym/fuzz_ipc_policy
 ```
 
 Oracles are XNU's own panics and asserts (the mocks turn a panic into an abort) plus the invariant
@@ -173,21 +187,28 @@ env ASAN_SYMBOLIZER_PATH=/opt/homebrew/opt/llvm/bin/llvm-symbolizer build/harnes
 ```
 
 The XNU C/C++ objects not matched by Apple's sanitizer ignorelist and the public harness glue carry
-both instrumentations. The assembly glue, libFuzzer runtime, and most Apple mock sources do not. A
-bounded run registered 439,598 PCs, grew coverage from 7 to 366, reached
-`mach_port_request_notification`, `mach_port_mod_refs`, `mach_port_destruct` and their IPC callees,
-and completed 1,000 executions at 186 MB peak RSS without an ASan report.
+both instrumentations. The assembly glue, libFuzzer runtime, and most Apple mock sources do not.
+A fixed-seed, empty-corpus run completed 10,000 executions per target without an ASan report:
 
-Next: more of the surface Apple's tests already reach — vouchers and IPC policy — then buffer-backed
-`copyin`/`copyout`, which is what unlocks the parser-shaped targets.
+| Target | Coverage | New units | Peak RSS |
+|---|---:|---:|---:|
+| Mach port lifecycle | 7 to 451 | 348 | 194 MB |
+| Voucher recipe/lifecycle | 224 to 519 | 80 | 189 MB |
+| IPC reply policy | 3 to 351 | 34 | 187 MB |
+
+The reports name the Mach, voucher, and policy callees rather than only harness code.
+
+`harness_copyio_begin` maps a caller-selected logical userspace range to a byte buffer. While it is
+active, `copyin` and `copyout` perform checked byte transfers and return `EFAULT` for out-of-range
+addresses; without a region they retain Apple's no-op test behavior. Nested regions are supported
+and must unwind in order. `copyio_test.c`, the IPC policy target's service description, and the
+voucher create/extract round trip exercise both valid transfers and rejection.
 
 The mocks, `tools/quote_defines.py`, `tools/xnu_lib.unexport`, and `all-alias.exp` are used in place
 from the xnu checkout and the library objdir, so they always match the source drop being built.
 
 ## What it does not do yet
 
-- **Buffer-backed `copyin`/`copyout`.** Apple's mocks are no-ops, so copyin-driven paths read
-  uninitialized buffers. Replacing them is the single most enabling change for parser targets.
 - **The rest of `xnu/tests/unit/`.** `include/darwintest.h` covers the macro surface
   `mach_port_construct.c` uses. Other tests will need more of it (`T_ASSERT_PANIC`, `T_MOCK_*`
   helpers, the fibers scheduler entry points); add them as they come up. EXPECT is currently as fatal
@@ -195,7 +216,7 @@ from the xnu checkout and the library objdir, so they always match the source dr
 
 ## Targets, ranked by what Apple's harness already reaches
 
-Easy: Mach port/right/notification state machine, vouchers (Apple's `ipc/` tests drive them in-process).
+Easy: Mach port/right/notification state machine, vouchers and reply-port policy (included).
 Easy-medium: sysctl, `vm_map` operation sequences. Medium: `OSUnserialize`, `ipc_kmsg` descriptor
 parsing, MIG dispatch. Hard: VFS, Mach-O loader, kqueue, networking, DTrace DIF, kexts. Not reachable
 through this library: CoreEntitlements, libDER, img4 (KDK binaries).

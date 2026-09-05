@@ -206,6 +206,9 @@ while IFS= read -r src; do
     esac
     mock_objects+=("${obj}")
 done < <(find "${UNIT_DIR}/mocks/osfmk" "${UNIT_DIR}/mocks/bsd" -name '*.c' | sort)
+"${CC}" "${OSFMK_CFLAGS[@]}" "${COMMON_CFLAGS[@]}" -DUT_BUILDING_LIBMOCKS \
+    -c "${HARNESS_DIR}/userspace_mocks.c" -o "${OBJ}/mocks/userspace_mocks.o"
+mock_objects+=("${OBJ}/mocks/userspace_mocks.o")
 "${LIBTOOL}" -static "${mock_objects[@]}" -o "${OBJ}/libmocks.a"
 
 info "linking libmocks.dylib"
@@ -226,16 +229,16 @@ info "linking smoke"
 # Apple's own tests, compiled unmodified against harness/include/darwintest.h. Each is one compile
 # plus one link against the two dylibs; the expensive library build is not repeated.
 info "linking tests"
-# Apple's tests, compiled unmodified. notification_policy.c and voucher_restrictions.c are
-# deliberately absent: the first asserts behavior that only holds when CONFIG_ROSETTA is defined,
-# the second reaches an SMR path that is unsupported in user mode. Both are explained under
-# "Test status" in README.md; add them here to reproduce.
+# Apple's tests, compiled unmodified. notification_policy.c remains absent because it asserts
+# behavior that only holds when CONFIG_ROSETTA is defined; README.md records that boundary.
 TESTS=(
     "${UNIT_DIR}/ipc/mach_port_construct.c"
     "${UNIT_DIR}/ipc/voucher_user_data.c"
+    "${UNIT_DIR}/ipc/voucher_restrictions.c"
     "${UNIT_DIR}/ipc/tss_policy.c"
     "${UNIT_DIR}/ipc/copyout_immovable_send_right.c"
     "${UNIT_DIR}/ipc/xpc_connection_port_pair.c"
+    "${HARNESS_DIR}/copyio_test.c"
 )
 for test_src in "${TESTS[@]}"; do
     test_name=$(basename "${test_src}" .c)
@@ -250,6 +253,8 @@ done
 info "linking fuzz targets"
 FUZZERS=(
     "${HARNESS_DIR}/fuzz_mach_port.c"
+    "${HARNESS_DIR}/fuzz_voucher.c"
+    "${HARNESS_DIR}/fuzz_ipc_policy.c"
 )
 for fuzz_src in "${FUZZERS[@]}"; do
     fuzz_name=$(basename "${fuzz_src}" .c)
