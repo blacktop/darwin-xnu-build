@@ -90,6 +90,12 @@ fuzz_pick_name(struct fuzz_input *in, struct fuzz_ports *ports, unsigned *slot_o
 		if (!fuzz_u32(in, &raw)) {
 			return MACH_PORT_NULL;
 		}
+		for (unsigned slot = 0; slot < ports->fp_count; slot++) {
+			if (ports->fp_name[slot] == (mach_port_name_t)raw) {
+				*slot_out = slot;
+				break;
+			}
+		}
 		return (mach_port_name_t)raw;
 	}
 	*slot_out = (sel >> 2) % ports->fp_count;
