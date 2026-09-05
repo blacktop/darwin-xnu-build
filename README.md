@@ -204,7 +204,7 @@ This toggles Apple's `RC_ProjectName=xnu_libraries` path and drops the archive p
 - `build/xnu-lib.obj/RELEASE_ARM64_VMAPPLE/all-{alias,kpi}.exp`
 
 > [!WARNING]
-> By default the archive holds only the sources Apple tags `xnu-library` in `conf/files` (currently just `bsd/kern/qsort.c`) plus `version.o`, and the `.libfilelist`s are empty. The export lists and generated headers are real, but there is no kernel code to link against. Apple's own userspace unit-test harness (`xnu/tests/unit/`) builds the library with `XNU_LibAllFiles=1 XNU_LibFlavour=UNITTEST`; pass `XNU_LIB_ALL_FILES=1 XNU_LIB_FLAVOUR=UNITTEST` to get the same, which compiles every kernel source as an arm64e userspace object (no `-mkernel`) and leaves a multi-hundred-MB objdir. The `UNITTEST` flavour is the only one the sources know; any other value is an unused macro.
+> By default the archive holds only the sources Apple tags `xnu-library` in `conf/files` (currently just `bsd/kern/qsort.c`) plus `version.o`, and the `.libfilelist`s are empty. The export lists and generated headers are real, but there is no kernel code to link against.
 
 Every GitHub release also publishes a pre-packed `xnu-lib-<version>.tar.gz` bundle mirroring the default layout above (export lists and generated headers, not a linkable kernel).
 

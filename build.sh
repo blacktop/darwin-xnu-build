@@ -763,8 +763,7 @@ build_xnu_library() {
             lib_env+=("XNU_LibAllFiles=${XNU_LIB_ALL_FILES}")
         fi
         # Without an EmbeddedDeviceMap, MakeInc.def rewrites arm64 to arm64e. Overriding the arch
-        # string builds a plain arm64 library that can link to the available arm64 sanitizer and
-        # libFuzzer runtimes.
+        # string permits a plain arm64 library build.
         local -a lib_make_args=()
         if [ -n "${XNU_LIB_ARCH_STRING:-}" ]; then
             lib_make_args+=("ARCH_STRING_FOR_CURRENT_MACHINE_CONFIG=${XNU_LIB_ARCH_STRING}")
