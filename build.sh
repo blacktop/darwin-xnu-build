@@ -738,8 +738,14 @@ build_xnu() {
 }
 
 build_xnu_library() {
-    local lib_objroot="${BUILD_DIR}/xnu-lib.obj"
-    local lib_symroot="${BUILD_DIR}/xnu-lib.sym"
+    local lib_variant="${XNU_LIB_VARIANT:-}"
+    if [[ "${lib_variant}" == *[![:alnum:]_.-]* ]]; then
+        error "XNU_LIB_VARIANT must contain only letters, digits, '.', '_' or '-'"
+        exit 1
+    fi
+    local lib_suffix="${lib_variant:+-${lib_variant}}"
+    local lib_objroot="${BUILD_DIR}/xnu-lib${lib_suffix}.obj"
+    local lib_symroot="${BUILD_DIR}/xnu-lib${lib_suffix}.sym"
     local lib_archive="${lib_objroot}/libkernel.${KERNEL_TYPE}.a"
     if [ ! -f "${lib_archive}" ]; then
         running "📦 Building XNU library libkernel.${KERNEL_TYPE}.a"
@@ -756,11 +762,23 @@ build_xnu_library() {
         if [ -n "${XNU_LIB_ALL_FILES:-}" ]; then
             lib_env+=("XNU_LibAllFiles=${XNU_LIB_ALL_FILES}")
         fi
+        # Without an EmbeddedDeviceMap, MakeInc.def rewrites arm64 to arm64e. Overriding the arch
+        # string builds a plain arm64 library that can link to the available arm64 sanitizer and
+        # libFuzzer runtimes.
+        local -a lib_make_args=()
+        if [ -n "${XNU_LIB_ARCH_STRING:-}" ]; then
+            lib_make_args+=("ARCH_STRING_FOR_CURRENT_MACHINE_CONFIG=${XNU_LIB_ARCH_STRING}")
+            info "Building the XNU library for arch string: ${XNU_LIB_ARCH_STRING}"
+        fi
+        if [ -n "${XNU_LIB_CFLAGS_EXTRA:-}" ]; then
+            lib_make_args+=("CFLAGS_EXTRA=${XNU_LIB_CFLAGS_EXTRA}")
+            info "Building the XNU library with extra compiler flags"
+        fi
         cd "${SRCROOT}"
         ctf_tool_overrides
         kernel_version_env
         env "${lib_env[@]}" \
-            make install -j8 VERBOSE=YES "${CTF_TOOL_OVERRIDES[@]}" SDKROOT=macosx TARGET_CONFIGS="$KERNEL_CONFIG $ARCH_CONFIG $MACHINE_CONFIG" CONCISE=0 LOGCOLORS=y BUILD_WERROR=0 BUILD_LTO=0 SRCROOT="${SRCROOT}" OBJROOT="${OBJROOT}" SYMROOT="${SYMROOT}" DSTROOT="${DSTROOT}" FAKEROOT_DIR="${FAKEROOT_DIR}" KDKROOT="${KDKROOT}" TIGHTBEAMC=${TIGHTBEAMC} RC_DARWIN_KERNEL_VERSION=${RC_DARWIN_KERNEL_VERSION} MEMORY_SIZE="${MEMORY_SIZE_OVERRIDE}" SYSCTL_HW_PHYSICALCPU="${PHYS_CPU_OVERRIDE}" SYSCTL_HW_LOGICALCPU="${LOGICAL_CPU_OVERRIDE}" KERNEL_BUILDS_IN_PARALLEL="${KERNEL_PARALLELISM_OVERRIDE:-1}"
+            make install -j8 VERBOSE=YES "${CTF_TOOL_OVERRIDES[@]}" "${lib_make_args[@]}" SDKROOT=macosx TARGET_CONFIGS="$KERNEL_CONFIG $ARCH_CONFIG $MACHINE_CONFIG" CONCISE=0 LOGCOLORS=y BUILD_WERROR=0 BUILD_LTO=0 SRCROOT="${SRCROOT}" OBJROOT="${OBJROOT}" SYMROOT="${SYMROOT}" DSTROOT="${DSTROOT}" FAKEROOT_DIR="${FAKEROOT_DIR}" KDKROOT="${KDKROOT}" TIGHTBEAMC=${TIGHTBEAMC} RC_DARWIN_KERNEL_VERSION=${RC_DARWIN_KERNEL_VERSION} MEMORY_SIZE="${MEMORY_SIZE_OVERRIDE}" SYSCTL_HW_PHYSICALCPU="${PHYS_CPU_OVERRIDE}" SYSCTL_HW_LOGICALCPU="${LOGICAL_CPU_OVERRIDE}" KERNEL_BUILDS_IN_PARALLEL="${KERNEL_PARALLELISM_OVERRIDE:-1}"
         cd "${WORK_DIR}"
         if [ -f "${lib_archive}" ]; then
             info "📦 Created ${lib_archive}"

@@ -78,7 +78,7 @@ Seven things were needed beyond Apple's own files, all in `attached.c`, `plan.c`
    compiles the non-SPTM pmap that Apple's `mock_pmap.c` does not target.
 
    ```fish
-   env XNU_LIB_ALL_FILES=1 XNU_LIB_FLAVOUR=UNITTEST MACOS_VERSION=26.5 KERNEL_CONFIG=DEVELOPMENT ARCH_CONFIG=ARM64 MACHINE_CONFIG=T6020 ./build.sh --lib
+   env XNU_LIB_ALL_FILES=1 XNU_LIB_FLAVOUR=UNITTEST XNU_LIB_ARCH_STRING=arm64 MACOS_VERSION=26.5 KERNEL_CONFIG=DEVELOPMENT ARCH_CONFIG=ARM64 MACHINE_CONFIG=T6020 ./build.sh --lib
    ```
 
 2. Link the harness and run the smoke test (same `KERNEL_CONFIG`/`ARCH_CONFIG`/`MACHINE_CONFIG`):
@@ -89,7 +89,8 @@ Seven things were needed beyond Apple's own files, all in `attached.c`, `plan.c`
    ```
 
 The library build is the slow step and only has to be repeated when instrumentation changes
-(sanitizers and coverage go into xnu's `CFLAGS_EXTRA`). Harnesses are one compile and one link each.
+(sanitizers and coverage go into xnu's `CFLAGS_EXTRA`). `XNU_LIB_VARIANT` gives those builds their
+own object, symbol, and harness directories so the baseline archives stay intact.
 
 ## Layout
 
@@ -104,7 +105,8 @@ The library build is the slow step and only has to be repeated when instrumentat
 | `include/darwintest.h` | the darwintest macros Apple's tests use, so they compile unmodified | `libdarwintest.a` + its headers |
 | `dt_runner.c` | `main()` that runs every registered `T_DECL`; aborts on the first failure | libdarwintest's runner |
 | `fuzz_mach_port.c` | fuzz target over the Mach port right lifecycle; entry point is `LLVMFuzzerTestOneInput` | `tests/unit/fuzzing/` (not published) |
-| `fuzz_runner.c` | `main()` that replays input files through the target, since there is no arm64e libFuzzer | libFuzzer's driver |
+| `fuzz_runner.c` | deterministic input-file replay driver | darwintest's non-fuzzing mode |
+| `fuzz_libfuzzer_runner.c` | forwards arguments and inputs to `LLVMFuzzerRunDriver` | darwintest's fuzzing mode |
 | `xnu_lib.unexport.extra` | extra libc symbols to hide from the dylib's exports | appended to Apple's `xnu_lib.unexport` |
 | `include/dyld-interposing.h` | verbatim copy of the public dyld header (APSL 2.0), absent from the SDK | `$(SDKROOT)/usr/local/include/mach-o/dyld-interposing.h` |
 
@@ -155,16 +157,26 @@ build/harness/DEVELOPMENT_ARM64_T6020/sym/fuzz_mach_port corpus/*   # replay a c
 
 Oracles are XNU's own panics and asserts (the mocks turn a panic into an abort) plus the invariant
 checks in the target. A `kern_return_t` error is never a finding on its own: rejecting bad input is
-the kernel doing its job. A 400-input random soak runs clean, and inverting the post-construct
-oracle makes it abort on a genuinely constructed port, which is how the target is checked for
-exercising real kernel code rather than passing vacuously.
+the kernel doing its job. Inverting the post-construct oracle aborts on a constructed port, which
+checks that the target exercises real kernel code rather than passing vacuously.
 
-The entry point is `LLVMFuzzerTestOneInput`, so a libFuzzer build needs no change to the target. What
-is missing is the runtime: Apple clang instruments with `-fsanitize=fuzzer-no-link` but ships no
-`libclang_rt.fuzzer_osx.a`, and Homebrew LLVM's copy has no arm64e slice. Either build compiler-rt's
-`lib/fuzzer` for arm64e and wrap it in a dylib the way Apple's Makefile does, or drive
-`-fsanitize-coverage=trace-pc-guard` from an external fuzzer; `mocks/san_attached.c` already stubs
-the coverage callbacks.
+The guided configuration uses Apple clang to build plain-arm64 XNU with libFuzzer and ASan
+instrumentation, then wraps Homebrew LLVM's arm64 libFuzzer runtime in a dylib so its libc calls
+cannot bind to XNU's same-named exports. Build it separately from the baseline:
+
+```fish
+set sanitizer_list (pwd)/xnu/tests/unit/tools/sanitizers-ignorelist
+set sanitizer_flags "-fsanitize=fuzzer-no-link -fsanitize=address -mllvm -asan-globals=0 -fsanitize-coverage-ignorelist=$sanitizer_list -fsanitize-ignorelist=$sanitizer_list"
+env XNU_LIB_VARIANT=fuzz XNU_LIB_ALL_FILES=1 XNU_LIB_FLAVOUR=UNITTEST XNU_LIB_ARCH_STRING=arm64 XNU_LIB_CFLAGS_EXTRA="$sanitizer_flags" MACOS_VERSION=26.5 KERNEL_CONFIG=DEVELOPMENT ARCH_CONFIG=ARM64 MACHINE_CONFIG=T6020 ./build.sh --lib
+env XNU_LIB_VARIANT=fuzz GUIDED_FUZZING=1 KERNEL_CONFIG=DEVELOPMENT ARCH_CONFIG=ARM64 MACHINE_CONFIG=T6020 harness/build.sh
+env ASAN_SYMBOLIZER_PATH=/opt/homebrew/opt/llvm/bin/llvm-symbolizer build/harness-fuzz/DEVELOPMENT_ARM64_T6020/sym/fuzz_mach_port_guided -seed=1607419011 -runs=1000 -max_len=256 -timeout=2 -rss_limit_mb=0 -print_final_stats=1
+```
+
+The XNU C/C++ objects not matched by Apple's sanitizer ignorelist and the public harness glue carry
+both instrumentations. The assembly glue, libFuzzer runtime, and most Apple mock sources do not. A
+bounded run registered 439,598 PCs, grew coverage from 7 to 366, reached
+`mach_port_request_notification`, `mach_port_mod_refs`, `mach_port_destruct` and their IPC callees,
+and completed 1,000 executions at 186 MB peak RSS without an ASan report.
 
 Next: more of the surface Apple's tests already reach — vouchers and IPC policy — then buffer-backed
 `copyin`/`copyout`, which is what unlocks the parser-shaped targets.
@@ -174,10 +186,6 @@ from the xnu checkout and the library objdir, so they always match the source dr
 
 ## What it does not do yet
 
-- **Coverage-guided fuzzing.** Apple clang instruments (`-fsanitize=fuzzer-no-link`) but ships no
-  libFuzzer runtime, and Homebrew LLVM's runtime has no arm64e slice. Options: build compiler-rt's
-  `lib/fuzzer` for arm64e and wrap it in a dylib as Apple's Makefile does, or drive
-  `-fsanitize-coverage=trace-pc-guard` from an external fuzzer. ASan/UBSan dylibs do ship with Xcode.
 - **Buffer-backed `copyin`/`copyout`.** Apple's mocks are no-ops, so copyin-driven paths read
   uninitialized buffers. Replacing them is the single most enabling change for parser targets.
 - **The rest of `xnu/tests/unit/`.** `include/darwintest.h` covers the macro surface

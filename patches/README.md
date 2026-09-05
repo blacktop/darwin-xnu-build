@@ -14,6 +14,8 @@ This repository already ships a number of pre-made patches that soften the rough
 
 ### Optional Quality-of-Life Patches
 - `disable_bti_vmapple.patch`: undefines `BTI_ENFORCED` just for VMAPPLE so BTI checks don't trip when booting the kernel inside Virtualization.framework guests.
+- `define_esr_ec_pac_fail_unconditionally.patch`: keeps `ESR_EC_PAC_FAIL` available when compiling the `xnu_libraries` target as plain arm64, matching its unconditional use in `sleh.c` and allowing the result to link with arm64 sanitizer and libFuzzer runtimes.
+- `guard_sptm_user_pointer_ops_with_pac.patch`: omits PAC-only per-CPU SPTM pointer-signing scratch state and batch flushes from plain-arm64 `xnu_libraries` builds, matching the guards on the SPTM type and signing operations.
 
 > Historical note: `disable_dtrace_vm_apple.patch` was used on older drops to sidestep assembler issues in SDT macros. The macOS 26.0 toolchain now builds without it, so the patch has been retired. `remove_tightbeam.patch`, `iokit.patch` and `skywalk.patch` were likewise dropped from the 26.0 toolkit in `2b72aa9` once the 26.x sources stopped needing them.
 

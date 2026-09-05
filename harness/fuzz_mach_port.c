@@ -9,8 +9,7 @@
  * mismatches) are the interesting class here, and they only appear across operations.
  *
  * The entry point is LLVMFuzzerTestOneInput so a libFuzzer build needs no changes to this file.
- * There is no arm64e libFuzzer runtime in the public toolchain, so harness/fuzz_runner.c supplies a
- * main() that replays files instead; see harness/README.md.
+ * harness/fuzz_runner.c supplies deterministic replay; guided builds add the libFuzzer driver.
  *
  * Oracles: XNU's own panics and asserts (the mocks turn panic into an abort), plus the invariant
  * checks below. A kern_return_t error is never a finding on its own - rejecting bad input is the
@@ -36,7 +35,7 @@ struct fuzz_input {
 static bool
 fuzz_bytes(struct fuzz_input *in, void *out, size_t len)
 {
-	if (in->fi_pos + len > in->fi_size) {
+	if (in->fi_pos > in->fi_size || len > in->fi_size - in->fi_pos) {
 		return false;
 	}
 	memcpy(out, in->fi_data + in->fi_pos, len);
@@ -67,6 +66,9 @@ struct fuzz_ports {
 	mach_port_name_t fp_name[FUZZ_MAX_PORTS];
 	uint64_t fp_guard[FUZZ_MAX_PORTS];
 	bool fp_guarded[FUZZ_MAX_PORTS];
+	bool fp_receive[FUZZ_MAX_PORTS];
+	mach_port_urefs_t fp_send_urefs[FUZZ_MAX_PORTS];
+	mach_port_urefs_t fp_dead_urefs[FUZZ_MAX_PORTS];
 	unsigned fp_count;
 };
 
@@ -103,7 +105,22 @@ fuzz_forget(struct fuzz_ports *ports, unsigned slot)
 	ports->fp_name[slot] = ports->fp_name[ports->fp_count - 1];
 	ports->fp_guard[slot] = ports->fp_guard[ports->fp_count - 1];
 	ports->fp_guarded[slot] = ports->fp_guarded[ports->fp_count - 1];
+	ports->fp_receive[slot] = ports->fp_receive[ports->fp_count - 1];
+	ports->fp_send_urefs[slot] = ports->fp_send_urefs[ports->fp_count - 1];
+	ports->fp_dead_urefs[slot] = ports->fp_dead_urefs[ports->fp_count - 1];
 	ports->fp_count--;
+}
+
+static mach_port_urefs_t
+fuzz_adjust_urefs(mach_port_urefs_t urefs, mach_port_delta_t delta)
+{
+	if (urefs == MACH_PORT_UREFS_MAX) {
+		return delta == -((mach_port_delta_t)MACH_PORT_UREFS_MAX) ? 0 : urefs;
+	}
+	if (delta > 0 && (mach_port_urefs_t)delta > MACH_PORT_UREFS_MAX - urefs) {
+		return MACH_PORT_UREFS_MAX;
+	}
+	return (mach_port_urefs_t)(urefs + delta);
 }
 
 static void
@@ -140,9 +157,16 @@ fuzz_construct(struct fuzz_input *in, struct fuzz_ports *ports)
 		ports->fp_name[slot] = name;
 		ports->fp_guard[slot] = context;
 		ports->fp_guarded[slot] = (flags & MPO_CONTEXT_AS_GUARD) != 0;
+		ports->fp_receive[slot] = true;
+		ports->fp_send_urefs[slot] = (flags & MPO_INSERT_SEND_RIGHT) != 0;
 	} else {
-		mach_port_destruct(current_space(), name, 0,
+		kern_return_t kr = mach_port_destruct(current_space(), name,
+		    (flags & MPO_INSERT_SEND_RIGHT) ? -1 : 0,
 		    (flags & MPO_CONTEXT_AS_GUARD) ? context : 0);
+		if (kr != KERN_SUCCESS) {
+			raw_printf("FUZZ BUG: overflow cleanup failed for name 0x%x (%d)\n", name, kr);
+			abort();
+		}
 	}
 }
 
@@ -157,11 +181,32 @@ fuzz_mod_refs(struct fuzz_input *in, struct fuzz_ports *ports)
 	if (!fuzz_u8(in, &right) || !fuzz_u8(in, &delta)) {
 		return;
 	}
-	/* A -1 delta on the receive right destroys the port, so drop our record of it. */
-	if (mach_port_mod_refs(current_space(), name, right % (MACH_PORT_RIGHT_NUMBER + 1),
-	    (mach_port_delta_t)(int8_t)delta) == KERN_SUCCESS &&
-	    (int8_t)delta < 0 && slot < FUZZ_MAX_PORTS) {
-		fuzz_forget(ports, slot);
+	mach_port_right_t right_kind = right % (MACH_PORT_RIGHT_NUMBER + 1);
+	mach_port_delta_t signed_delta = (mach_port_delta_t)(int8_t)delta;
+	if (mach_port_mod_refs(current_space(), name, right_kind, signed_delta) != KERN_SUCCESS ||
+	    slot >= ports->fp_count) {
+		return;
+	}
+	if (right_kind == MACH_PORT_RIGHT_RECEIVE && signed_delta == -1) {
+		ports->fp_receive[slot] = false;
+		if (ports->fp_send_urefs[slot] > 0) {
+			ports->fp_dead_urefs[slot] = ports->fp_send_urefs[slot];
+			ports->fp_send_urefs[slot] = 0;
+		} else {
+			fuzz_forget(ports, slot);
+		}
+	} else if (right_kind == MACH_PORT_RIGHT_SEND) {
+		ports->fp_send_urefs[slot] = fuzz_adjust_urefs(ports->fp_send_urefs[slot],
+		    signed_delta);
+		if (!ports->fp_receive[slot] && ports->fp_send_urefs[slot] == 0) {
+			fuzz_forget(ports, slot);
+		}
+	} else if (right_kind == MACH_PORT_RIGHT_DEAD_NAME) {
+		ports->fp_dead_urefs[slot] = fuzz_adjust_urefs(ports->fp_dead_urefs[slot],
+		    signed_delta);
+		if (ports->fp_dead_urefs[slot] == 0) {
+			fuzz_forget(ports, slot);
+		}
 	}
 }
 
@@ -196,14 +241,27 @@ fuzz_destruct(struct fuzz_input *in, struct fuzz_ports *ports)
 	if (!fuzz_u8(in, &srdelta)) {
 		return;
 	}
-	if (slot < FUZZ_MAX_PORTS && ports->fp_guarded[slot]) {
+	if (slot < ports->fp_count && ports->fp_guarded[slot]) {
 		guard = ports->fp_guard[slot];
 	} else if (!fuzz_u64(in, &guard)) {
 		return;
 	}
 	if (mach_port_destruct(current_space(), name, (mach_port_delta_t)(int8_t)srdelta,
-	    guard) == KERN_SUCCESS && slot < FUZZ_MAX_PORTS) {
-		fuzz_forget(ports, slot);
+	    guard) == KERN_SUCCESS && slot < ports->fp_count) {
+		mach_port_delta_t signed_delta = (mach_port_delta_t)(int8_t)srdelta;
+		if (ports->fp_send_urefs[slot] == MACH_PORT_UREFS_MAX &&
+		    signed_delta != -((mach_port_delta_t)MACH_PORT_UREFS_MAX)) {
+			signed_delta = 0;
+		}
+		ports->fp_send_urefs[slot] = fuzz_adjust_urefs(ports->fp_send_urefs[slot],
+		    signed_delta);
+		ports->fp_receive[slot] = false;
+		if (ports->fp_send_urefs[slot] > 0) {
+			ports->fp_dead_urefs[slot] = ports->fp_send_urefs[slot];
+			ports->fp_send_urefs[slot] = 0;
+		} else {
+			fuzz_forget(ports, slot);
+		}
 	}
 }
 
@@ -236,8 +294,21 @@ LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	/* Leave the space as it was found, so iterations stay independent. */
 	while (ports.fp_count > 0) {
 		unsigned slot = ports.fp_count - 1;
-		mach_port_destruct(current_space(), ports.fp_name[slot], 0,
-		    ports.fp_guarded[slot] ? ports.fp_guard[slot] : 0);
+		kern_return_t kr;
+		if (ports.fp_receive[slot]) {
+			kr = mach_port_destruct(current_space(), ports.fp_name[slot],
+			    -((mach_port_delta_t)ports.fp_send_urefs[slot]),
+			    ports.fp_guarded[slot] ? ports.fp_guard[slot] : 0);
+		} else {
+			kr = mach_port_mod_refs(current_space(), ports.fp_name[slot],
+			    MACH_PORT_RIGHT_DEAD_NAME,
+			    -((mach_port_delta_t)ports.fp_dead_urefs[slot]));
+		}
+		if (kr != KERN_SUCCESS) {
+			raw_printf("FUZZ BUG: cleanup failed for name 0x%x (%d)\n",
+			    ports.fp_name[slot], kr);
+			abort();
+		}
 		ports.fp_count--;
 	}
 	return 0;

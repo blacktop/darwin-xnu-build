@@ -137,6 +137,22 @@ __asm__(
 	"_pmap_query_resident_internal: brk #0\n");
 
 /*
+ * Apple's thread mocks interpose the PAC-safe interrupt helpers even in a plain-arm64 build and
+ * retain pointers to the originals. The real helpers only exist when pointer authentication is
+ * enabled, so provide link-only traps for that configuration. The mock implementations model the
+ * logical interrupt state; reaching either original would be a harness bug.
+ */
+#if !__has_feature(ptrauth_calls)
+__asm__(
+	".text\n"
+	".p2align 2\n"
+	".globl _ml_pac_safe_interrupts_disable\n"
+	"_ml_pac_safe_interrupts_disable: brk #0\n"
+	".globl _ml_pac_safe_interrupts_restore\n"
+	"_ml_pac_safe_interrupts_restore: brk #0\n");
+#endif /* !__has_feature(ptrauth_calls) */
+
+/*
  * Low-address backing for Apple's mock memory pools.
  *
  * mocks/mock_mem.c allocates each pool with calloc(). XNU packs vm_map, vm_map_entry and
@@ -211,8 +227,13 @@ harness_low_alloc(unsigned long size)
 		cursor = base;
 	}
 
+	if (size > HARNESS_ARENA_SIZE - 16383) {
+		static const char msg[] = "harness: low allocation too large\n";
+		write(2, msg, sizeof(msg) - 1);
+		abort();
+	}
 	size = (size + 16383) & ~16383ULL;
-	if (cursor + size > arena_end) {
+	if (cursor > arena_end || size > arena_end - cursor) {
 		static const char msg[] = "harness: low arena exhausted\n";
 		write(2, msg, sizeof(msg) - 1);
 		abort();

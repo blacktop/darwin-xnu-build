@@ -1,0 +1,85 @@
+diff --git a/osfmk/arm64/sptm/pmap/pmap_data.c b/osfmk/arm64/sptm/pmap/pmap_data.c
+index b9ef1c86c..8d60d725a 100644
+--- a/osfmk/arm64/sptm/pmap/pmap_data.c
++++ b/osfmk/arm64/sptm/pmap/pmap_data.c
+@@ -2059,7 +2059,9 @@ pmap_cpu_data_init_internal(unsigned int cpu_number)
+ 	/* Setup per-cpu fields used when calling into the SPTM. */
+ 	pmap_sptm_percpu_data_t *sptm_pcpu = PERCPU_GET(pmap_sptm_percpu);
+ 	assert(((uintptr_t)sptm_pcpu & (PMAP_SPTM_PCPU_ALIGN - 1)) == 0);
++#if HAS_APPLE_PAC
+ 	sptm_pcpu->sptm_user_pointer_ops_pa = kvtophys_nofail((vm_offset_t)sptm_pcpu->sptm_user_pointer_ops);
++#endif /* HAS_APPLE_PAC */
+ 	sptm_pcpu->sptm_ops_pa = kvtophys_nofail((vm_offset_t)sptm_pcpu->sptm_ops);
+ 	sptm_pcpu->sptm_templates_pa = kvtophys_nofail((vm_offset_t)sptm_pcpu->sptm_templates);
+ 	sptm_pcpu->sptm_paddrs_pa = kvtophys_nofail((vm_offset_t)sptm_pcpu->sptm_paddrs);
+diff --git a/osfmk/arm64/sptm/pmap/pmap_data.h b/osfmk/arm64/sptm/pmap/pmap_data.h
+index da38a0efd..d8c80ad4a 100644
+--- a/osfmk/arm64/sptm/pmap/pmap_data.h
++++ b/osfmk/arm64/sptm/pmap/pmap_data.h
+@@ -1185,8 +1185,10 @@ typedef struct {
+ 	 */
+ 	void *sptm_iommu_scratch;
+ 
++#if HAS_APPLE_PAC
+ 	/* Accumulator for batched user pointer SPTM ops, to avoid excessive stack usage. */
+ 	sptm_user_pointer_op_t sptm_user_pointer_ops[SPTM_MAPPING_LIMIT];
++#endif /* HAS_APPLE_PAC */
+ 
+ 	/* Accumulator for batched disjoint SPTM ops, to avoid excessive stack usage. */
+ 	sptm_disjoint_op_t sptm_ops[SPTM_MAPPING_LIMIT];
+@@ -1199,8 +1201,10 @@ typedef struct {
+ 		sptm_paddr_t sptm_paddrs[SPTM_MAPPING_LIMIT];
+ 	};
+ 
++#if HAS_APPLE_PAC
+ 	/* Base PA of user pointer ops array, for passing the ops into the SPTM. */
+ 	pmap_paddr_t sptm_user_pointer_ops_pa;
++#endif /* HAS_APPLE_PAC */
+ 
+ 	/* Base PA of ops array, for passing the ops into the SPTM. */
+ 	pmap_paddr_t sptm_ops_pa;
+diff --git a/osfmk/vm/vm_shared_region.c b/osfmk/vm/vm_shared_region.c
+index 0b688296a..225c0871d 100644
+--- a/osfmk/vm/vm_shared_region.c
++++ b/osfmk/vm/vm_shared_region.c
+@@ -3302,10 +3302,10 @@ vm_shared_region_slide_page_v3(
+ 
+ 		bool isBind = (value & (1ULL << 62)) != 0;
+ 		if (isBind) {
+-#if CONFIG_SPTM
++#if CONFIG_SPTM && __has_feature(ptrauth_calls)
+ 			pmap_batch_sign_user_ptr(NULL, NULL, 0, 0, 0);
+ 			assert(preemption_enabled());
+-#endif /* CONFIG_SPTM */
++#endif /* CONFIG_SPTM && __has_feature(ptrauth_calls) */
+ 			return KERN_FAILURE;
+ 		}
+ 
+@@ -3359,11 +3359,11 @@ vm_shared_region_slide_page_v3(
+ 		}
+ 	} while (delta != 0);
+ 
+-#if CONFIG_SPTM
++#if CONFIG_SPTM && __has_feature(ptrauth_calls)
+ 	/* Sign the leftovers if there's any. */
+ 	pmap_batch_sign_user_ptr(NULL, NULL, 0, 0, 0);
+ 	assert(preemption_enabled());
+-#endif /* CONFIG_SPTM */
++#endif /* CONFIG_SPTM && __has_feature(ptrauth_calls) */
+ 
+ 	return KERN_SUCCESS;
+ }
+@@ -3572,11 +3572,11 @@ vm_shared_region_slide_page_v5(
+ 		}
+ 	} while (delta != 0);
+ 
+-#if CONFIG_SPTM
++#if CONFIG_SPTM && __has_feature(ptrauth_calls)
+ 	/* Sign the leftovers if there's any. */
+ 	pmap_batch_sign_user_ptr(NULL, NULL, 0, 0, 0);
+ 	assert(preemption_enabled());
+-#endif /* CONFIG_SPTM */
++#endif /* CONFIG_SPTM && __has_feature(ptrauth_calls) */
+ 
+ 	return KERN_SUCCESS;
+ }

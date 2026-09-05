@@ -1,10 +1,8 @@
 /*
  * Replay driver for fuzz targets.
  *
- * Apple's harness runs T_FUZZ entries under libFuzzer, but the public toolchain has no arm64e
- * libFuzzer runtime: Apple clang instruments with -fsanitize=fuzzer-no-link yet ships no
- * libclang_rt.fuzzer_osx.a, and Homebrew LLVM's copy has no arm64e slice. This main() feeds files
- * to LLVMFuzzerTestOneInput instead, so the target itself needs no changes once a runtime exists.
+ * This driver keeps deterministic file replay available in both baseline and instrumented builds.
+ * harness/build.sh also links a separate coverage-guided driver when GUIDED_FUZZING=1.
  *
  * With no arguments it runs a few built-in inputs as a smoke test, so the target is exercised on
  * every build rather than only when someone has a corpus.

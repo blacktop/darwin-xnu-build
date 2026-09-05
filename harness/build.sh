@@ -11,10 +11,10 @@
 #   5. build the darwintest replacement (dt_stub.c) and the smoke executable
 #
 # Prerequisite: a full library build, for example
-#   env XNU_LIB_ALL_FILES=1 XNU_LIB_FLAVOUR=UNITTEST MACOS_VERSION=26.5 KERNEL_CONFIG=DEVELOPMENT \
-#       ARCH_CONFIG=ARM64 MACHINE_CONFIG=T6020 ./build.sh --lib
+#   env XNU_LIB_ALL_FILES=1 XNU_LIB_FLAVOUR=UNITTEST XNU_LIB_ARCH_STRING=arm64 MACOS_VERSION=26.5 \
+#       KERNEL_CONFIG=DEVELOPMENT ARCH_CONFIG=ARM64 MACHINE_CONFIG=T6020 ./build.sh --lib
 #
-# Outputs land in build/harness/<KERNEL_CONFIG>_<ARCH_CONFIG>_<MACHINE_CONFIG>/{obj,sym}.
+# Outputs land in build/harness[-<XNU_LIB_VARIANT>]/<CONFIG>_<ARCH>_<MACHINE>/{obj,sym}.
 set -euo pipefail
 
 WORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -26,13 +26,25 @@ MACHINE_CONFIG="${MACHINE_CONFIG:-T6020}"
 # Extra flags for harness sources, e.g. the -D__BUILDING_WITH_*__ defines that match a
 # sanitizer-instrumented library build.
 HARNESS_CFLAGS="${HARNESS_CFLAGS:-}"
+XNU_LIB_VARIANT="${XNU_LIB_VARIANT:-}"
+GUIDED_FUZZING="${GUIDED_FUZZING:-0}"
+
+if [[ "${XNU_LIB_VARIANT}" == *[![:alnum:]_.-]* ]]; then
+    echo "[harness] error: XNU_LIB_VARIANT must contain only letters, digits, '.', '_' or '-'" >&2
+    exit 1
+fi
+if [ "${GUIDED_FUZZING}" != 0 ] && [ "${GUIDED_FUZZING}" != 1 ]; then
+    echo "[harness] error: GUIDED_FUZZING must be 0 or 1" >&2
+    exit 1
+fi
 
 kernel_config_lc=$(echo "${KERNEL_CONFIG}" | tr '[:upper:]' '[:lower:]')
 machine_config_lc=$(echo "${MACHINE_CONFIG}" | tr '[:upper:]' '[:lower:]')
-OBJD="${WORK_DIR}/build/xnu-lib.obj/${KERNEL_CONFIG}_${ARCH_CONFIG}_${MACHINE_CONFIG}"
+variant_suffix="${XNU_LIB_VARIANT:+-${XNU_LIB_VARIANT}}"
+OBJD="${WORK_DIR}/build/xnu-lib${variant_suffix}.obj/${KERNEL_CONFIG}_${ARCH_CONFIG}_${MACHINE_CONFIG}"
 LIB_BASE="libkernel.${kernel_config_lc}.${machine_config_lc}"
 XNU_LIB="${OBJD}/${LIB_BASE}.a"
-OUT="${WORK_DIR}/build/harness/${KERNEL_CONFIG}_${ARCH_CONFIG}_${MACHINE_CONFIG}"
+OUT="${WORK_DIR}/build/harness${variant_suffix}/${KERNEL_CONFIG}_${ARCH_CONFIG}_${MACHINE_CONFIG}"
 OBJ="${OUT}/obj"
 SYM="${OUT}/sym"
 
@@ -71,6 +83,18 @@ COMMON_CFLAGS=("-isysroot" "${SDKROOT}" "-I${UNIT_DIR}" "-I${UNIT_DIR}/mocks" "-
     -Wno-missing-prototypes -Wno-unused-parameter -Wno-missing-variable-declarations)
 # shellcheck disable=SC2206 # HARNESS_CFLAGS is a user-supplied flag list; word splitting is intended
 COMMON_CFLAGS+=(${HARNESS_CFLAGS})
+if [ "${GUIDED_FUZZING}" = 1 ]; then
+    case " ${OSFMK_CFLAGS[*]} " in *" -fsanitize=fuzzer-no-link "*) ;; *)
+        die "GUIDED_FUZZING=1 needs an XNU library built with -fsanitize=fuzzer-no-link"
+        ;;
+    esac
+    case " ${OSFMK_CFLAGS[*]} " in *" -fsanitize=address "*) ;; *)
+        die "GUIDED_FUZZING=1 needs an XNU library built with -fsanitize=address"
+        ;;
+    esac
+    COMMON_CFLAGS+=(-D__BUILDING_WITH_LIBFUZZER__=1 -D__BUILDING_WITH_SANCOV__=1
+        -D__BUILDING_WITH_SANITIZER__=1 -D__BUILDING_WITH_ASAN__=1)
+fi
 
 # Adapt Apple's mocks to the public source drop:
 #   - osfmk/arm64/hv/ (hypervisor) is not published, so the hv mocks and mock_mach_port.c, which
@@ -100,6 +124,33 @@ info "prelinking ${LIB_BASE}.a"
 "${LD}" -r "${OBJ}/arch_def.o" -all_load "${XNU_LIB}" -o "${OBJ}/${LIB_BASE}.prelinked.a" \
     -unexported_symbols_list "${OBJ}/xnu_lib.unexport" -alias_list "${OBJD}/all-alias.exp"
 
+FUZZ_LINK=()
+SAN_ATTACHED=()
+if [ "${GUIDED_FUZZING}" = 1 ]; then
+    LIBFUZZER_RUNTIME="${LIBFUZZER_RUNTIME:-}"
+    if [ -z "${LIBFUZZER_RUNTIME}" ]; then
+        LIBFUZZER_RUNTIME=$(find /opt/homebrew/opt/llvm/lib/clang \
+            -path '*/lib/darwin/libclang_rt.fuzzer_osx.a' -print -quit 2>/dev/null || true)
+    fi
+    [ -f "${LIBFUZZER_RUNTIME}" ] || die "GUIDED_FUZZING=1 needs an arm64 LIBFUZZER_RUNTIME"
+    lipo -verify_arch arm64 "${LIBFUZZER_RUNTIME}" || die "${LIBFUZZER_RUNTIME} has no arm64 slice"
+
+    # Keep libFuzzer in its own dylib so its libc calls cannot bind to XNU's same-named symbols.
+    # Current inline-counter instrumentation also needs pcs_init, absent from Apple's export list.
+    {
+        cat "${UNIT_DIR}/tools/libfuzzer.export"
+        echo ___sanitizer_cov_pcs_init
+    } |
+        sort -u >"${OBJ}/libfuzzer.export"
+    "${LD}" -r "${OBJ}/arch_def.o" -all_load "${LIBFUZZER_RUNTIME}" \
+        -exported_symbols_list "${OBJ}/libfuzzer.export" -o "${OBJ}/libfuzzer.prelinked.a"
+    "${CC}" "${OSFMK_CFLAGS[@]}" "${COMMON_CFLAGS[@]}" -dynamiclib \
+        "${OBJ}/libfuzzer.prelinked.a" -lc++ -install_name @rpath/libfuzzer.dylib \
+        -o "${SYM}/libfuzzer.dylib" -U _LLVMFuzzerTestOneInput
+    FUZZ_LINK=("${SYM}/libfuzzer.dylib")
+    SAN_ATTACHED=("${UNIT_DIR}/mocks/san_attached.c")
+fi
+
 # KDK routines the bootstrap calls that have no meaning in a userspace process. Each is listed in
 # kdk_zero_stubs.txt and becomes a function returning 0, instead of the trap that func_unimpl.inc
 # would otherwise generate. Keeping the list in a file makes every one of them visible.
@@ -112,21 +163,28 @@ info "generating zero stubs from kdk_zero_stubs.txt"
 
 info "linking ${LIB_BASE}.dylib"
 XNU_DYLIB="${SYM}/${LIB_BASE}.dylib"
-"${CC}" "${OSFMK_CFLAGS[@]}" "${COMMON_CFLAGS[@]}" -dynamiclib \
+"${CC}" "${OSFMK_CFLAGS[@]}" "${COMMON_CFLAGS[@]}" -dynamiclib "${FUZZ_LINK[@]}" \
     "${UNIT_DIR}/mocks/fake_kinit.c" "${UNIT_DIR}/mocks/fake_libsptm.c" "${UNIT_DIR}/mocks/mock_3rd_party.c" \
     "${OBJ}/mocks-src/mock_mem.c" "${UNIT_DIR}/mocks/mock_attached.c" "${HARNESS_DIR}/attached.c" \
-    "${OBJ}/zero_stubs.s" \
+    "${SAN_ATTACHED[@]}" "${OBJ}/zero_stubs.s" \
     -Wl,-all_load,"${OBJ}/${LIB_BASE}.prelinked.a" -lc++ -Wl,-undefined,dynamic_lookup -Wl,-interposable \
     -install_name "@rpath/${LIB_BASE}.dylib" -o "${XNU_DYLIB}"
 
 # Whatever is still unresolved becomes a trap in mocks/osfmk/mock_unimpl.c, minus the zero stubs
 # above, which are already defined in the dylib.
 info "generating func_unimpl.inc from the dylib's unresolved imports"
+"${DYLD_INFO}" -imports "${XNU_DYLIB}" >"${OBJ}/imports.txt"
+if ! awk '$0 ~ /<flat-namespace>/ {flat++}
+    $1 ~ /^_/ && $2 == "(from" && $3 == "<flat-namespace>)" {matched++}
+    END {exit flat == 0 || flat != matched}' "${OBJ}/imports.txt"; then
+    die "unrecognized dyld_info flat-namespace import record"
+fi
 {
     echo "// Generated from undefined imports of ${XNU_DYLIB}"
-    "${DYLD_INFO}" -imports "${XNU_DYLIB}" | { grep 'flat-namespace' || true; } |
-        awk '{print substr($2, 2)}' |
+    awk '$1 ~ /^_/ && $2 == "(from" && $3 == "<flat-namespace>)" {print substr($1, 2)}' \
+        "${OBJ}/imports.txt" |
         { grep -vxF -f "${HARNESS_DIR}/kdk_zero_stubs.txt" || true; } |
+        sort -u |
         awk '{print "UNIMPLEMENTED(" $1 ")"}'
 } >"${OBJ}/func_unimpl.inc"
 
@@ -188,9 +246,7 @@ for test_src in "${TESTS[@]}"; do
     info "  ${SYM}/${test_name}"
 done
 
-# Fuzz targets: same compile-and-link shape as a test, but with the replay driver instead of the
-# T_DECL runner. -fsanitize=fuzzer-no-link instruments for coverage; see harness/README.md for what
-# is still missing before a coverage-guided run is possible.
+# Fuzz targets keep the replay driver. Guided builds add a separate libFuzzer driver.
 info "linking fuzz targets"
 FUZZERS=(
     "${HARNESS_DIR}/fuzz_mach_port.c"
@@ -202,6 +258,14 @@ for fuzz_src in "${FUZZERS[@]}"; do
         "${XNU_DYLIB}" "${MOCKS_DYLIB}" -Wl,-force_load,"${OBJ}/libside.a" \
         -rpath @executable_path -o "${SYM}/${fuzz_name}"
     info "  ${SYM}/${fuzz_name}"
+    if [ "${GUIDED_FUZZING}" = 1 ]; then
+        "${CC}" "${OSFMK_CFLAGS[@]}" "${COMMON_CFLAGS[@]}" -DUT_MODULE=osfmk \
+            "${fuzz_src}" "${HARNESS_DIR}/fuzz_libfuzzer_runner.c" \
+            "${FUZZ_LINK[@]}" "${XNU_DYLIB}" "${MOCKS_DYLIB}" \
+            -Wl,-force_load,"${OBJ}/libside.a" -rpath @executable_path \
+            -o "${SYM}/${fuzz_name}_guided"
+        info "  ${SYM}/${fuzz_name}_guided"
+    fi
 done
 
 info "done: run ${SYM}/smoke"
